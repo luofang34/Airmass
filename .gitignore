@@ -1,0 +1,21 @@
+# Cargo build output. Anchored so a directory named "target" inside source stays tracked.
+/target/
+
+# A nested crate builds into its own target directory. An unanchored rule is the only one
+# that catches those, and a build tree committed by accident is thousands of files.
+**/target/
+
+# Rust backtrace and coverage output.
+*.profraw
+
+# Editor and tool state.
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS directory metadata.
+.DS_Store
+
+# Captured receptions. A recording is data, not source; commit a trimmed fixture instead.
+*.jsonl
