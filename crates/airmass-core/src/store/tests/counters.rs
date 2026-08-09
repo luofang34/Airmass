@@ -44,6 +44,7 @@ fn monotonic_expiry_deadline_must_fit_the_clock_range() {
         absent(),
         absent(),
         absent(),
+        absent(),
         FieldState::present(field(DurationMillis::new(1), "alpha", 1, monotonic)),
     );
     let ingress = WeatherIngress::product(

@@ -35,7 +35,7 @@ fn ingress(revision: u64, byte: u8, monotonic: u64) -> WeatherIngress {
     WeatherIngress::product(
         WeatherProductId::new("radar"),
         SourceProductRevision::new(revision),
-        WeatherProduct::new(payload, absent(), absent(), absent(), absent()),
+        WeatherProduct::new(payload, absent(), absent(), absent(), absent(), absent()),
     )
 }
 
@@ -53,16 +53,16 @@ fn at(value: u64) -> EvaluationTime {
 #[test]
 fn ingress_header_rejects_the_previous_version_before_payload_decode() {
     let text = r#"{
-        "schema_version": 1,
+        "schema_version": 2,
         "event": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherIngressHeader =
         serde_json::from_str(text).expect("header must ignore payload fields");
-    assert_eq!(header.schema_version(), 1);
+    assert_eq!(header.schema_version(), 2);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedIngressVersion {
-            found: 1,
+            found: 2,
             supported: CURRENT_WEATHER_INGRESS_SCHEMA_VERSION,
         })
     );
@@ -71,16 +71,16 @@ fn ingress_header_rejects_the_previous_version_before_payload_decode() {
 #[test]
 fn snapshot_header_rejects_the_previous_version_before_envelope_decode() {
     let text = r#"{
-        "schema_version": 1,
+        "schema_version": 2,
         "envelope": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherSnapshotRecordHeader =
         serde_json::from_str(text).expect("header must ignore envelope fields");
-    assert_eq!(header.schema_version(), 1);
+    assert_eq!(header.schema_version(), 2);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedSnapshotVersion {
-            found: 1,
+            found: 2,
             supported: CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION,
         })
     );
@@ -148,6 +148,10 @@ fn serialized_fields_keep_evidence_and_explicit_absence() {
         encoded["event"]["value"]["issue_time"]["field"]["reason"],
         "not_observed"
     );
+    assert_eq!(
+        encoded["event"]["value"]["typed_value"]["field"]["reason"],
+        "not_observed"
+    );
     assert_eq!(payload["time"]["ingress_monotonic"], 10_000);
     assert_eq!(payload["time"]["ingress_basis"], "unknown");
     assert_eq!(payload["time"]["ingress_uncertainty"]["state"], "unknown");
@@ -173,6 +177,7 @@ fn store_keeps_time_and_provenance_for_each_field() {
     );
     let product = WeatherProduct::new(
         product.payload().clone(),
+        product.typed_value().clone(),
         FieldState::present(issue_time),
         product.effective_at().clone(),
         product.valid_period().clone(),

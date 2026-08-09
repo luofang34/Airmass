@@ -4,7 +4,7 @@ use alloc::{string::String, vec::Vec};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{DurationMillis, FieldState, TimedField, UtcInterval, UtcTime};
+use crate::{DurationMillis, FieldState, TimedField, UtcInterval, UtcTime, WeatherValue};
 
 /// Opaque source payload for a weather product.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -33,6 +33,7 @@ pub type ProductIssueTime = FieldState<UtcTime>;
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct WeatherProduct {
     payload: TimedField<WeatherPayload>,
+    typed_value: FieldState<WeatherValue>,
     issue_time: ProductIssueTime,
     effective_at: FieldState<UtcTime>,
     valid_period: FieldState<UtcInterval>,
@@ -44,6 +45,7 @@ impl WeatherProduct {
     #[must_use]
     pub fn new(
         payload: TimedField<WeatherPayload>,
+        typed_value: FieldState<WeatherValue>,
         issue_time: ProductIssueTime,
         effective_at: FieldState<UtcTime>,
         valid_period: FieldState<UtcInterval>,
@@ -51,6 +53,7 @@ impl WeatherProduct {
     ) -> Self {
         Self {
             payload,
+            typed_value,
             issue_time,
             effective_at,
             valid_period,
@@ -62,6 +65,12 @@ impl WeatherProduct {
     #[must_use]
     pub const fn payload(&self) -> &TimedField<WeatherPayload> {
         &self.payload
+    }
+
+    /// Get the typed weather value field.
+    #[must_use]
+    pub const fn typed_value(&self) -> &FieldState<WeatherValue> {
+        &self.typed_value
     }
 
     /// Get the product issue-time field.

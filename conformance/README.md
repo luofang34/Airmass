@@ -1,6 +1,6 @@
 # Weather ingress conformance corpus
 
-`weather-ingress-v2.json` defines source-neutral weather lifecycle scenarios.
+`weather-ingress-v3.json` defines source-neutral weather lifecycle scenarios.
 The corpus version is independent of a source protocol. The file also names
 the `WeatherIngress` schema version that its steps use.
 

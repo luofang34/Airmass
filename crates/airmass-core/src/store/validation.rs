@@ -1,8 +1,8 @@
 //! Store configuration and weather ingress validation.
 
 use crate::{
-    AbsenceEvidence, FieldState, StoreConfig, StoreError, TimeEvidence, TimedField,
-    WeatherIngressEvent, WeatherProduct, WeatherProductId,
+    AbsenceEvidence, FieldState, StoreConfig, StoreError, TextWeatherReport, TimeEvidence,
+    TimedField, WeatherIngressEvent, WeatherProduct, WeatherProductId, WeatherValue,
 };
 
 pub(super) fn validate_config(config: &StoreConfig) -> Result<(), StoreError> {
@@ -81,6 +81,7 @@ fn validate_product(
     now: crate::EvaluationTime,
 ) -> Result<(), StoreError> {
     validate_timed(product_id, "payload", product.payload(), expected, now)?;
+    validate_typed_value(product_id, product.typed_value(), expected, now)?;
     validate_field(
         product_id,
         "issue_time",
@@ -110,6 +111,63 @@ fn validate_product(
         now,
     )?;
     validate_product_times(product_id, product)
+}
+
+fn validate_typed_value(
+    product_id: &WeatherProductId,
+    value: &FieldState<WeatherValue>,
+    expected: &crate::SourceRef,
+    now: crate::EvaluationTime,
+) -> Result<(), StoreError> {
+    validate_field(product_id, "typed_value", value, expected, now)?;
+    let Some(field) = value.as_present() else {
+        return Ok(());
+    };
+    match &field.value {
+        WeatherValue::TextReports(reports) => {
+            for report in reports {
+                validate_text_report(product_id, report, expected, now)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_text_report(
+    product_id: &WeatherProductId,
+    report: &TextWeatherReport,
+    expected: &crate::SourceRef,
+    now: crate::EvaluationTime,
+) -> Result<(), StoreError> {
+    validate_field(
+        product_id,
+        "report.type",
+        report.report_type(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "report.station",
+        report.station_id(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "report.time",
+        report.report_time(),
+        expected,
+        now,
+    )?;
+    validate_timed(product_id, "report.text", report.text(), expected, now)?;
+    validate_field(
+        product_id,
+        "report.flight_category",
+        report.flight_category(),
+        expected,
+        now,
+    )
 }
 
 fn validate_product_times(

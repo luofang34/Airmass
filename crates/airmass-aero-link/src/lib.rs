@@ -6,6 +6,7 @@ extern crate alloc;
 
 mod adapter;
 mod mapping;
+mod text_report;
 
 pub use adapter::{AdapterError, AeroLinkAdapter, WeatherIngressBatch};
 pub use mapping::MappingError;
