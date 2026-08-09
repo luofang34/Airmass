@@ -1,0 +1,49 @@
+{
+  "source": "https://aviationweather.gov/data/cache/metars.cache.csv.gz",
+  "records": [
+    {
+      "station_id": "KUNV",
+      "observation_day": 9,
+      "observation_hour": 19,
+      "observation_minute": 53,
+      "latitude_deg": 40.8534,
+      "longitude_deg": -77.8401,
+      "raw_text": "METAR KUNV 091953Z 26006KT 10SM SCT050 29/19 A3007",
+      "report_text": "26006KT 10SM SCT050 29/19 A3007",
+      "flight_category": "vfr"
+    },
+    {
+      "station_id": "MMMD",
+      "observation_day": 9,
+      "observation_hour": 19,
+      "observation_minute": 42,
+      "latitude_deg": 20.936,
+      "longitude_deg": -89.659,
+      "raw_text": "METAR MMMD 091942Z 32004KT 7SM BKN020CB 31/26 A2996 RMK 60085 8/300 HZY -RAB37E40 CI",
+      "report_text": "32004KT 7SM BKN020CB 31/26 A2996 RMK 60085 8/300 HZY -RAB37E40 CI",
+      "flight_category": "mvfr"
+    },
+    {
+      "station_id": "KUES",
+      "observation_day": 9,
+      "observation_hour": 19,
+      "observation_minute": 45,
+      "latitude_deg": 43.0425,
+      "longitude_deg": -88.2465,
+      "raw_text": "METAR KUES 091945Z 00000KT 10SM BKN009 BKN012 21/19 A2996",
+      "report_text": "00000KT 10SM BKN009 BKN012 21/19 A2996",
+      "flight_category": "ifr"
+    },
+    {
+      "station_id": "KHAF",
+      "observation_day": 9,
+      "observation_hour": 19,
+      "observation_minute": 35,
+      "latitude_deg": 37.5136,
+      "longitude_deg": -122.4996,
+      "raw_text": "METAR KHAF 091935Z AUTO VRB04KT 1 3/4SM BR OVC004 16/16 A2991 RMK AO2",
+      "report_text": "AUTO VRB04KT 1 3/4SM BR OVC004 16/16 A2991 RMK AO2",
+      "flight_category": "lifr"
+    }
+  ]
+}

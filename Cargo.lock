@@ -56,6 +56,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "airmass-geojson"
+version = "0.1.0"
+dependencies = [
+ "airmass-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -33,6 +33,12 @@ replay or simulator -> source adapter |
                                       |
                                       v
                          immutable weather snapshots
+                                      |
+                                      v
+                              airmass-geojson
+                                      |
+                                      v
+                         typed weather feature changes
 ```
 
 The `airmass-aero-link` adapter consumes classified FIS-B protocol records. It
@@ -44,6 +50,12 @@ type, station identity, report time, and source text. A METAR or SPECI report
 also keeps its flight category when the ceiling and visibility are known.
 Unsupported weather products keep their source payload and an explicit absent
 typed value.
+
+The [`airmass-geojson` adapter](docs/map-features.md) converts applicable
+snapshot changes to typed weather feature changes. A caller supplies station
+positions. The optional `geojson` feature encodes the changes as RFC 7946
+Feature objects. The adapter does not depend on a renderer, `aero-link`, or
+`Navdata`.
 
 `aero-link` owns bounded FIS-B assembly and protocol classification. It uses
 category names such as weather, aeronautical update, link health, and
@@ -59,6 +71,9 @@ socket, USB stack, command-line interface, or renderer.
 The core emits domain values. An application can show, record, or send these
 values. A gridded weather product is a typed grid. It is not a renderer feature
 or a tile.
+
+The feature adapter maps only typed vector values. It does not inspect an
+opaque payload to find a position or a shape.
 
 The [weather ingress conformance corpus](conformance/README.md) supplies
 source-neutral lifecycle scenarios. A source adapter can use the corpus before
