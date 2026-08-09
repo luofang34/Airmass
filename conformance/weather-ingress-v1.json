@@ -1,0 +1,339 @@
+{
+  "corpus_version": 1,
+  "weather_ingress_schema_version": 1,
+  "evidence_profile": {
+    "origin": "simulation",
+    "delivery_path": "conformance-corpus",
+    "quality": "unavailable",
+    "known_time_basis": "source_utc",
+    "known_time_quality": "exact",
+    "known_time_uncertainty": 0,
+    "raw_product_identity": null
+  },
+  "scenarios": [
+    {
+      "name": "revision",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "source_time": 100,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 200,
+          "monotonic": 20,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 2,
+          "source_time": 200,
+          "payload": [2],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancellation",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "cancellation",
+          "utc": 200,
+          "monotonic": 20,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 2,
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "cancelled",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        }
+      ]
+    },
+    {
+      "name": "expiry",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 10,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "payload": [1],
+          "valid_end": 50,
+          "maximum_age": 20,
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source",
+            "next_utc": 50,
+            "next_monotonic": 30
+          }
+        },
+        {
+          "operation": "advance",
+          "utc": 30,
+          "monotonic": 30,
+          "expect": {
+            "published": true,
+            "state": "expired",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source",
+            "next_utc": 50
+          }
+        }
+      ]
+    },
+    {
+      "name": "conflicting_sources",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "source_time": 100,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 200,
+          "monotonic": 20,
+          "source": "beta",
+          "epoch": 1,
+          "source_revision": 1,
+          "source_time": 200,
+          "payload": [2],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "beta",
+            "selected_epoch": 1,
+            "criterion": "known_source_time"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown_time",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 20,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 20,
+          "source": "beta",
+          "epoch": 1,
+          "source_revision": 1,
+          "source_time": 10,
+          "payload": [2],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "beta",
+            "selected_epoch": 1,
+            "criterion": "known_source_time"
+          }
+        }
+      ]
+    },
+    {
+      "name": "replay",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 1,
+          "payload": [1],
+          "expect": {
+            "status": "replay",
+            "published": false,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        }
+      ]
+    },
+    {
+      "name": "source_restart",
+      "steps": [
+        {
+          "operation": "product",
+          "utc": 100,
+          "monotonic": 10,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 9,
+          "payload": [1],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 1,
+            "snapshot_revision": 1,
+            "selected_source": "alpha",
+            "selected_epoch": 1,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 200,
+          "monotonic": 20,
+          "source": "alpha",
+          "epoch": 2,
+          "source_revision": 1,
+          "payload": [2],
+          "expect": {
+            "status": "applied",
+            "published": true,
+            "state": "available",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "alpha",
+            "selected_epoch": 2,
+            "criterion": "sole_source"
+          }
+        },
+        {
+          "operation": "product",
+          "utc": 300,
+          "monotonic": 30,
+          "source": "alpha",
+          "epoch": 1,
+          "source_revision": 10,
+          "payload": [3],
+          "expect": {
+            "status": "stale",
+            "published": false,
+            "state": "available",
+            "product_revision": 2,
+            "snapshot_revision": 2,
+            "selected_source": "alpha",
+            "selected_epoch": 2,
+            "criterion": "sole_source"
+          }
+        }
+      ]
+    }
+  ]
+}

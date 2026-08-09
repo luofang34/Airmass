@@ -1,0 +1,21 @@
+[package]
+name = "airmass-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Source-neutral weather ingress, lifecycle state, and immutable snapshots"
+license = "MIT"
+
+[features]
+default = []
+std = ["serde/std", "thiserror/std"]
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

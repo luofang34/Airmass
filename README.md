@@ -54,6 +54,10 @@ The core emits domain values. An application can show, record, or send these
 values. A gridded weather product is a typed grid. It is not a renderer feature
 or a tile.
 
+The [weather ingress conformance corpus](conformance/README.md) supplies
+source-neutral lifecycle scenarios. A source adapter can use the corpus before
+a live source is available.
+
 [AGENTS.md](AGENTS.md) states the binding repository rules. The
 [roadmap](docs/roadmap.md) states the order of work.
 
