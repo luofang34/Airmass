@@ -3,6 +3,7 @@
 #![allow(clippy::panic)]
 
 use aero_link::{CorrectedUatFrame, ReceptionEvent, UatDecoder, UatFrameClass};
+use airmass_aero_link::AeroLinkAdapter;
 
 const UNKNOWN_PRODUCT_ID: u16 = 700;
 const UNKNOWN_PAYLOAD: [u8; 3] = [0xca, 0xfe, 0x01];
@@ -33,6 +34,23 @@ fn unknown_product_keeps_its_payload_bytes() {
     };
 
     assert_eq!(product.payload.as_slice(), UNKNOWN_PAYLOAD);
+}
+
+#[test]
+fn information_frame_projection_admits_only_weather() {
+    let event = uplink_event();
+    let mut adapter = AeroLinkAdapter::default();
+    let mut weather = Vec::new();
+    for projection in event.information_frames() {
+        let batch = adapter.accept_projection(projection);
+        let Ok(batch) = batch else {
+            panic!("the recorded projection must adapt without an error");
+        };
+        weather.extend(batch.into_values());
+    }
+
+    assert_eq!(weather.len(), 1);
+    assert_eq!(weather[0].product_id().as_str(), "fisb-product-413");
 }
 
 fn traffic_event() -> ReceptionEvent {

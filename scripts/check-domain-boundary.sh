@@ -24,7 +24,7 @@ if grep -RInE "$traffic_pattern" src crates 2>/dev/null; then
 fi
 
 if grep -RIn 'CompleteFisBProduct' src crates 2>/dev/null; then
-    fail 'Airmass must consume classified protocol records, not complete products.'
+    fail 'Airmass must consume classified exchange records, not complete products.'
 fi
 
 if ! grep -qE \

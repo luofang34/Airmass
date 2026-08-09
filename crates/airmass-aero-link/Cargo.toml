@@ -8,11 +8,15 @@ license = "MIT"
 
 [features]
 default = []
-std = ["aero-link/std", "airmass-core/std"]
+std = ["aero-link/std", "airmass-core/std", "thiserror/std"]
 
 [dependencies]
 aero-link = { workspace = true }
 airmass-core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
 
 [lints]
 workspace = true
