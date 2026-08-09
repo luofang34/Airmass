@@ -58,7 +58,7 @@ fn monotonic_expiry_deadline_must_fit_the_clock_range() {
             ingress,
             EvaluationTime::new(
                 crate::UtcTime::from_unix_millis(1),
-                MonotonicTime::from_millis(monotonic),
+                MonotonicTime::from_micros(monotonic),
             ),
         )
         .expect_err("expiry overflow must fail");
