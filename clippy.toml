@@ -1,0 +1,4 @@
+disallowed-types = [
+    { path = "anyhow::Error", reason = "Library crates use typed errors." },
+]
+too-many-lines-threshold = 80
