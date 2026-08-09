@@ -1,163 +1,141 @@
 # Airmass roadmap
 
-This document states the order of work. Each step gives its goal, its
-acceptance, and the reason for its position in the order. No step is started.
+This document states the order of work. Each step gives its goal, acceptance,
+and dependency.
 
-A later step must not begin before its stated dependency is complete. The order
-puts the input contract first, because every step after it consumes that
-contract.
+The Airmass core uses source-neutral domain types. A source-neutral type does
+not contain a source protocol type. A source adapter converts one source
+contract to the domain contract.
 
-## Step 1. Take the input contract from aero-link
+## Step 1. Define the source-neutral core
 
-**Goal.** Read `FisBMessage` values from `aero-link` and prove that Airmass
-receives what the contract promises.
+**Issue.** [Airmass #2](https://github.com/luofang34/Airmass/issues/2)
 
-`aero-link` supplies the FIS-B product projection through
-`ReceptionEvent::fis_b_messages()`. That method returns nothing for a traffic
-downlink. It is not a weather projection: it carries weather products,
-aeronautical notices, and link-service reports together. A product router sends
-each product to its owner, and Airmass accepts only the products that the
-routing table assigns to it. Airmass must not call `ReceptionEvent::traffic()`.
+**Goal.** Define `WeatherIngress`, the synchronous weather lifecycle store,
+and immutable weather snapshots.
 
-Each message carries:
+The core accepts weather data from a local receiver, installed avionics, a
+network provider, replay, or simulation through the same ingress contract. It
+does not depend on `aero-link`, a provider adapter, or
+`CompleteFisBProduct`.
 
-- the product identifier and its assignment status;
-- the encoding family, such as Global Block, DLAC text, or text and graphic
-  overlay;
-- the product time;
-- the segmentation fields, when the APDU is one part of a product file;
-- the payload bytes, unchanged.
+Civil UTC controls issue, effective, and valid periods. Host-supplied monotonic
+time controls receive order, age, and timeout. The core returns its next civil
+UTC and monotonic deadlines to the host.
 
-**Acceptance.**
+The store keeps a product revision for each weather product. It keeps a
+snapshot revision for each published state. The implementation names the two
+counters `product_revision` and `snapshot_revision`. It does not use one
+counter for both purposes.
 
-- Airmass depends on `aero-link` with `default-features = false`.
-- `ci/aero-link.ref` names the revision to build against.
-- A test feeds a mixed stream and shows that traffic receptions produce no
-  weather product and no error.
-- A test shows that an unknown product keeps its payload bytes unchanged.
+The snapshot follows the
+[Pilotage domain snapshot envelope](https://github.com/luofang34/Pilotage/blob/main/docs/domain-snapshot-envelope.md).
+It carries a producer instance ID, a snapshot revision, and an immutable
+weather snapshot. A caller can retain a snapshot handle after the store
+changes.
 
-**Reason for the position.** Every later step reads this input. A change to the
-input contract after step 3 would cause rework in each step.
-
-## Step 2. Take complete products from the shared assembler
-
-**Goal.** Accept a `CompleteFisBProduct` and keep only the products that the
-routing table assigns to Airmass.
-
-Segment assembly does not belong to Airmass. Pilotage ADR-0036 puts bounded
-assembly in `aero-link`, because one uplink stream serves Airmass and Airspace
-and two assemblers would repeat a mechanism and could disagree.
+Each source-derived field uses the `TimedField<T>` pattern. This pattern keeps
+the value, time evidence, quality evidence, and provenance together. An absent
+field carries a typed absence reason. A versioned exported schema lets a reader
+reject an unsupported version before it reads the payload.
 
 **Acceptance.**
 
-- Airmass accepts a complete product and its product identifier.
-- Airmass ignores a product that the routing table assigns to another owner.
-- A test supplies a mixed product sequence and shows that Airmass keeps only
-  meteorological products.
+- The ingress and snapshot schemas are versioned.
+- The core is synchronous and has one writer.
+- The caller supplies all time values.
+- The core returns its next deadline.
+- Product revision and snapshot revision use distinct types and counters.
+- Each counter uses `wrapping_add(1)` and rejects a wrapped value.
+- Source comparison is deterministic and supplies an explanation.
+- A retained snapshot handle does not change when the store changes.
+- A conformance corpus covers revision, cancellation, expiry, conflicting
+  sources, unknown source time, replay, and source restart.
+- The core builds for each selected portable target.
+- A dependency check rejects source-adapter and link-service dependencies from
+  the core.
 
-**Reason for the position.** A product decoder needs a complete payload, and
-the routing rule decides which products arrive at all.
+**Dependency.** The core contract has no source dependency.
 
-## Step 3. Hold the current set of products
+## Step 2. Add the aero-link source adapter
 
-**Goal.** Keep the product that is current, and remove the product that is not.
+**Issue.** [Airmass #1](https://github.com/luofang34/Airmass/issues/1)
 
-FIS-B repeats each product. A later transmission replaces an earlier one. Each
-product also has a valid period. A product that is too old must not stay in the
-current set.
+**Goal.** Add an `airmass-aero-link` adapter that maps classified FIS-B
+protocol records to `WeatherIngress`.
 
-**Acceptance.**
+`aero-link` owns bounded product assembly and protocol classification. The
+adapter preserves source identity, source epoch, delivery path, monotonic
+ingress time, source time, time quality, uncertainty, and raw product identity.
+It does not apply weather lifecycle rules.
 
-- A newer product replaces an older product with the same identity.
-- An expired product leaves the current set.
-- A caller supplies the time. Airmass contains no clock.
-- A test shows that an out-of-order arrival does not replace a newer product
-  with an older one.
-
-**Reason for the position.** Lifecycle is the state that `aero-link` cannot
-hold, so it is the first thing that only Airmass can supply. Product decoders
-can arrive later and use this set.
-
-## Step 4. Decode the text products
-
-**Goal.** Convert DLAC text products into typed reports.
-
-Product 413 carries METAR, SPECI, PIREP, TAF, amended TAF, and winds and
-temperatures aloft. `aero-link` already decodes the DLAC characters. Airmass
-gives each report its type, its location, and its time.
+The adapter emits no weather ingress for an aeronautical-update record or a
+link-health record. Composition can send one classified record to more than
+one consumer.
 
 **Acceptance.**
 
-- Airmass identifies the report type and the location for each report.
-- Airmass keeps the report text unchanged.
-- A test uses recorded reports from a live capture.
+- The adapter depends on `aero-link` with default features disabled.
+- `ci/aero-link.ref` names the exact revision used by CI.
+- A fixture maps each admitted weather category to `WeatherIngress`.
+- A mixed Product 8 fixture emits no weather ingress for a notice or a
+  link-health record.
+- Provenance survives the mapping without a default value.
+- A source restart creates a new source epoch.
+- A traffic downlink produces no FIS-B weather message and no error.
+- An unknown product keeps its payload bytes unchanged.
+- No code calls `ReceptionEvent::traffic()`.
+- `cargo tree` shows no `aero-link` dependency from the Airmass core.
 
-**Reason for the position.** Text products need no image decoder and no
-palette. They give a usable output early and prove steps 2 and 3 with real
-data.
+**Dependency.** This step starts only after Step 1 and
+[aero-link #62](https://github.com/luofang34/aero-link/issues/62) are complete.
 
-## Step 5. Decode the Global Block products
+## Step 3. Add typed weather values
 
-**Goal.** Convert Global Block products into a grid that an application can
-draw.
+**Goal.** Convert admitted weather evidence into typed reports, hazards, and
+grids.
 
-Eight products share the Global Block envelope: regional and CONUS
-precipitation, icing at two altitude ranges, cloud tops, turbulence at two
-altitude ranges, and lightning. The envelope is common. The values, the
-altitude meaning, and the no-data value are not.
+The adapter keeps the protocol classification that `aero-link` supplies.
+Airmass adds only weather-domain meaning. It does not repeat protocol fields
+that `aero-link` already decodes.
 
-**Acceptance.**
-
-- One decoder reads the common envelope: the block numbers, the empty-block
-  map, and the block reference.
-- A product-specific decoder reads the values for each product identifier.
-- A test shows that an unsupported product identifier keeps its payload bytes
-  and produces no grid.
-
-**Reason for the position.** This step is the largest. It must follow assembly,
-because a precipitation image is almost always segmented.
-
-## Step 6. Decode the meteorological overlay products
-
-**Goal.** Convert SIGMET, Convective SIGMET, AIRMET, G-AIRMET, and center
-weather advisory products into typed records with their shapes.
-
-NOTAM, TFR, and special-use airspace status are not in this step. `Airspace`
-owns them. An earlier version of this roadmap put them here, which mixed two
-categories in one component.
+A gridded product is a typed grid. It is not a feature, tile, image, or renderer
+value.
 
 **Acceptance.**
 
-- Airmass reads both the text records and the graphic overlay records.
-- Airmass supplies the shape points for a graphic record.
-- A test shows that Airmass rejects a notice product, because that product
-  belongs to `Airspace`.
+- Text reports keep their report type, station identity, report time, and
+  text.
+- Hazards keep their validity and typed geometry when geometry exists.
+- Gridded products use a typed grid with explicit coordinates and no-data
+  values.
+- Each decoded field keeps its own time, quality, and provenance.
+- An unsupported weather value stays available as source evidence.
 
-**Reason for the position.** These products need a complete payload from step 2
-and the record structure from step 4. Their shapes need no palette, so they can
-follow the Global Block work or run beside it.
+**Dependency.** This step requires the core contract and one source adapter.
 
-## Step 7. Record and replay
+## Step 4. Record and replay
 
-**Goal.** Write received uplinks to a file, and read them back through the same
-decoders.
+**Goal.** Record versioned ingress values and replay them through the same
+core contract.
 
 **Acceptance.**
 
-- A recording holds enough information to reproduce the product set.
-- A replay of one recording gives the same product set every time.
+- A recording keeps the ingress schema version and all provenance.
+- Replay does not replace source time with replay time.
+- A source epoch separates two replay sessions.
+- The same recording produces the same published weather state.
 
-**Reason for the position.** A recording is most useful after the decoders
-exist, because the decoders state what the recording must keep. A flat file of
-`ReceptionEvent` values already exists from live capture, so this step improves
-an available method rather than creating the first one.
+**Dependency.** This step requires the versioned ingress schema from Step 1.
 
 ## Not in this roadmap
 
-- Rendering, tiles, and palettes. An application owns them.
+- Application-owner routing. Composition selects installed consumers.
+- Radio control, USB, framing, FIS-B assembly, and protocol classification.
+  `aero-link` owns them.
 - Aircraft tracks. `Surveillance` owns them.
-- NOTAM, TFR, and special-use airspace status. `Airspace` owns them.
+- Notices, TFRs, restrictions, cancellations, and aeronautical operational
+  status. `AeronauticalUpdates` owns them.
 - The NASR and CIFP baseline. `Navdata` owns it.
-- Radio control, USB, framing, and FIS-B segment assembly. `aero-link` owns
-  them.
-- Stateless single-APDU decoding. `aero-link` owns it, per its issue #10.
+- Rendering, features, tiles, images, and presentation schemas. An application
+  owns them.

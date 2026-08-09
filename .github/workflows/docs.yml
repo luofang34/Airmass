@@ -1,0 +1,22 @@
+name: Documentation
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Airmass
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check the documentation boundary
+        run: ./scripts/check-doc-boundary.sh
