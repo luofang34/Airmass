@@ -7,6 +7,20 @@ The Airmass core uses source-neutral domain types. A source-neutral type does
 not contain a source protocol type. A source adapter converts one source
 contract to the domain contract.
 
+## Product delivery sequence
+
+The product delivery sequence has one dependency chain:
+
+1. [Airmass #1](https://github.com/luofang34/Airmass/issues/1) adds the
+   `airmass-aero-link` adapter.
+2. [Airmass #9](https://github.com/luofang34/Airmass/issues/9) adds DLAC text
+   reports and the METAR flight category.
+3. [Airmass #7](https://github.com/luofang34/Airmass/issues/7) adds the
+   renderer-neutral feature adapter.
+
+Other product work has no dependency on this chain. Assign additional project
+capacity to this chain first.
+
 ## Step 1. Define the source-neutral core
 
 **Issue.** [Airmass #2](https://github.com/luofang34/Airmass/issues/2)

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A caller-owned monotonic clock value in milliseconds.
+/// A caller-owned monotonic clock value in microseconds.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(transparent)]
 pub struct MonotonicTime(u64);
@@ -10,18 +10,22 @@ pub struct MonotonicTime(u64);
 impl MonotonicTime {
     /// Create a monotonic clock value.
     #[must_use]
-    pub const fn from_millis(millis: u64) -> Self {
-        Self(millis)
+    pub const fn from_micros(micros: u64) -> Self {
+        Self(micros)
     }
 
-    /// Get the clock value in milliseconds.
+    /// Get the clock value in microseconds.
     #[must_use]
-    pub const fn as_millis(self) -> u64 {
+    pub const fn as_micros(self) -> u64 {
         self.0
     }
 
     pub(crate) fn checked_add(self, duration: DurationMillis) -> Option<Self> {
-        self.0.checked_add(duration.0).map(Self)
+        duration
+            .0
+            .checked_mul(1_000)
+            .and_then(|micros| self.0.checked_add(micros))
+            .map(Self)
     }
 }
 
@@ -152,12 +156,25 @@ pub enum TimeQuality {
 
 /// Error bound for a mapped source time.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "state", content = "millis")]
+#[serde(rename_all = "snake_case", tag = "state", content = "micros")]
 pub enum TimeUncertainty {
     /// The source gives no error bound.
     Unknown,
-    /// The error is at most this many milliseconds.
+    /// The error is at most this many microseconds.
     Bounded(u64),
+}
+
+/// Method that established a monotonic ingress stamp.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum IngressTimeBasis {
+    /// The runtime stamped local input.
+    LocalIngress,
+    /// The runtime mapped a source time to its monotonic clock.
+    MappedSourceTime,
+    /// The method is not known.
+    Unknown,
 }
 
 /// Source time evidence for one field.
@@ -186,6 +203,10 @@ pub enum SourceTime {
 pub struct TimeEvidence {
     /// Monotonic stamp recorded at runtime ingress.
     pub ingress_monotonic: MonotonicTime,
+    /// Method that established the ingress stamp.
+    pub ingress_basis: IngressTimeBasis,
+    /// Error bound for the ingress stamp.
+    pub ingress_uncertainty: TimeUncertainty,
     /// Source observation or product time.
     pub source: SourceTime,
 }
@@ -196,6 +217,24 @@ impl TimeEvidence {
     pub const fn new(ingress_monotonic: MonotonicTime, source: SourceTime) -> Self {
         Self {
             ingress_monotonic,
+            ingress_basis: IngressTimeBasis::Unknown,
+            ingress_uncertainty: TimeUncertainty::Unknown,
+            source,
+        }
+    }
+
+    /// Create time evidence with explicit ingress-clock evidence.
+    #[must_use]
+    pub const fn with_ingress_evidence(
+        ingress_monotonic: MonotonicTime,
+        ingress_basis: IngressTimeBasis,
+        ingress_uncertainty: TimeUncertainty,
+        source: SourceTime,
+    ) -> Self {
+        Self {
+            ingress_monotonic,
+            ingress_basis,
+            ingress_uncertainty,
             source,
         }
     }

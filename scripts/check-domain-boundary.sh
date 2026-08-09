@@ -23,6 +23,16 @@ if grep -RInE "$traffic_pattern" src crates 2>/dev/null; then
     fail 'Airmass must not call the traffic projection.'
 fi
 
+if grep -RIn 'CompleteFisBProduct' src crates 2>/dev/null; then
+    fail 'Airmass must consume classified exchange records, not complete products.'
+fi
+
+if ! grep -qE \
+    '^aero-link = \{ path = "../aero-link", default-features = false \}$' \
+    Cargo.toml; then
+    fail 'the aero-link dependency must disable default features.'
+fi
+
 if grep -nE 'aero[_-]link|CompleteFisBProduct|ReceptionEvent' \
     crates/airmass-core/Cargo.toml; then
     fail 'the airmass-core manifest must not name a link-service dependency.'

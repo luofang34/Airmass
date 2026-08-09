@@ -17,6 +17,29 @@ jobs:
       - name: Check out Airmass
         uses: actions/checkout@v7
         with:
+          path: Airmass
+          persist-credentials: false
+      - name: Require the aero-link deploy key
+        env:
+          DEPLOY_KEY: ${{ secrets.AERO_LINK_DEPLOY_KEY }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            printf '%s\n' 'AERO_LINK_DEPLOY_KEY must contain the read-only aero-link deploy key.' >&2
+            exit 1
+          fi
+      - name: Read the aero-link revision
+        id: aero-link
+        working-directory: Airmass
+        run: |
+          ref=$(tr -d '[:space:]' < ci/aero-link.ref)
+          printf 'ref=%s\n' "$ref" >> "$GITHUB_OUTPUT"
+      - name: Check out aero-link
+        uses: actions/checkout@v7
+        with:
+          repository: luofang34/aero-link
+          path: aero-link
+          ref: ${{ steps.aero-link.outputs.ref }}
+          ssh-key: ${{ secrets.AERO_LINK_DEPLOY_KEY }}
           persist-credentials: false
       - name: Install the Rust toolchain
         run: |
@@ -27,6 +50,7 @@ jobs:
             riscv32imac-unknown-none-elf \
             wasm32-unknown-unknown
       - name: Run CI
+        working-directory: Airmass
         env:
           RUSTUP_TOOLCHAIN: "1.88"
         run: ./scripts/ci.sh

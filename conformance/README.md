@@ -1,12 +1,15 @@
 # Weather ingress conformance corpus
 
-`weather-ingress-v1.json` defines source-neutral weather lifecycle scenarios.
+`weather-ingress-v2.json` defines source-neutral weather lifecycle scenarios.
 The corpus version is independent of a source protocol. The file also names
 the `WeatherIngress` schema version that its steps use.
 
 The evidence profile states the common origin, delivery path, quality, time
 basis, time quality, time uncertainty, and raw product identity. A missing
 source time is explicitly unknown.
+
+The corpus gives monotonic step values in milliseconds. The exported schema
+stores monotonic values and their uncertainty in microseconds.
 
 Each scenario starts with an empty `WeatherStore`. A `product` or
 `cancellation` step supplies one source event. An `advance` step supplies time

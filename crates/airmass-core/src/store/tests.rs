@@ -16,10 +16,11 @@ mod counters;
 const PRODUCT: &str = "regional-radar";
 
 pub(super) fn at(utc: i64, monotonic: u64) -> EvaluationTime {
-    EvaluationTime::new(
-        UtcTime::from_unix_millis(utc),
-        MonotonicTime::from_millis(monotonic),
-    )
+    EvaluationTime::new(UtcTime::from_unix_millis(utc), monotonic_millis(monotonic))
+}
+
+fn monotonic_millis(value: u64) -> MonotonicTime {
+    MonotonicTime::from_micros(value.saturating_mul(1_000))
 }
 
 fn provenance(source: &str, epoch: u64) -> ProductProvenance {
@@ -39,7 +40,7 @@ fn time(monotonic: u64, source_time: Option<i64>) -> TimeEvidence {
         quality: TimeQuality::Exact,
         uncertainty: TimeUncertainty::Bounded(0),
     });
-    TimeEvidence::new(MonotonicTime::from_millis(monotonic), source)
+    TimeEvidence::new(monotonic_millis(monotonic), source)
 }
 
 pub(super) fn field<T>(value: T, source: &str, epoch: u64, monotonic: u64) -> TimedField<T> {
@@ -225,7 +226,7 @@ fn civil_and_monotonic_expiry_return_exact_deadlines() {
     );
     assert_eq!(
         accepted.next_deadline().monotonic,
-        Some(MonotonicTime::from_millis(60))
+        Some(monotonic_millis(60))
     );
     store
         .advance_time(at(60, 60))

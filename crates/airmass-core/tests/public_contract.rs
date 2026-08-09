@@ -28,7 +28,7 @@ fn ingress(revision: u64, byte: u8, monotonic: u64) -> WeatherIngress {
     );
     let payload = TimedField::new(
         WeatherPayload::new("application/octet-stream", vec![byte]),
-        TimeEvidence::new(MonotonicTime::from_millis(monotonic), SourceTime::Unknown),
+        TimeEvidence::new(monotonic_millis(monotonic), SourceTime::Unknown),
         QualityEvidence::Unavailable,
         provenance,
     );
@@ -39,44 +39,48 @@ fn ingress(revision: u64, byte: u8, monotonic: u64) -> WeatherIngress {
     )
 }
 
+fn monotonic_millis(value: u64) -> MonotonicTime {
+    MonotonicTime::from_micros(value * 1_000)
+}
+
 fn at(value: u64) -> EvaluationTime {
     EvaluationTime::new(
         UtcTime::from_unix_millis(value as i64),
-        MonotonicTime::from_millis(value),
+        monotonic_millis(value),
     )
 }
 
 #[test]
-fn ingress_header_rejects_a_version_before_payload_decode() {
+fn ingress_header_rejects_the_previous_version_before_payload_decode() {
     let text = r#"{
-        "schema_version": 77,
+        "schema_version": 1,
         "event": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherIngressHeader =
         serde_json::from_str(text).expect("header must ignore payload fields");
-    assert_eq!(header.schema_version(), 77);
+    assert_eq!(header.schema_version(), 1);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedIngressVersion {
-            found: 77,
+            found: 1,
             supported: CURRENT_WEATHER_INGRESS_SCHEMA_VERSION,
         })
     );
 }
 
 #[test]
-fn snapshot_header_rejects_a_version_before_envelope_decode() {
+fn snapshot_header_rejects_the_previous_version_before_envelope_decode() {
     let text = r#"{
-        "schema_version": 88,
+        "schema_version": 1,
         "envelope": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherSnapshotRecordHeader =
         serde_json::from_str(text).expect("header must ignore envelope fields");
-    assert_eq!(header.schema_version(), 88);
+    assert_eq!(header.schema_version(), 1);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedSnapshotVersion {
-            found: 88,
+            found: 1,
             supported: CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION,
         })
     );
@@ -144,6 +148,9 @@ fn serialized_fields_keep_evidence_and_explicit_absence() {
         encoded["event"]["value"]["issue_time"]["field"]["reason"],
         "not_observed"
     );
+    assert_eq!(payload["time"]["ingress_monotonic"], 10_000);
+    assert_eq!(payload["time"]["ingress_basis"], "unknown");
+    assert_eq!(payload["time"]["ingress_uncertainty"]["state"], "unknown");
 }
 
 #[test]
@@ -157,7 +164,7 @@ fn store_keeps_time_and_provenance_for_each_field() {
     };
     let issue_time = TimedField::new(
         UtcTime::from_unix_millis(2),
-        TimeEvidence::new(MonotonicTime::from_millis(5), SourceTime::Unknown),
+        TimeEvidence::new(monotonic_millis(5), SourceTime::Unknown),
         QualityEvidence::Reported {
             scheme: "provider-quality".into(),
             value: "reviewed".into(),
@@ -189,11 +196,14 @@ fn store_keeps_time_and_provenance_for_each_field() {
         .product(&WeatherProductId::new("radar"))
         .and_then(|value| value.state().available())
         .expect("product must be available");
-    assert_eq!(available.payload().time.ingress_monotonic.as_millis(), 10);
+    assert_eq!(
+        available.payload().time.ingress_monotonic.as_micros(),
+        10_000
+    );
     let issue = available
         .issue_time()
         .as_present()
         .expect("issue time must be present");
-    assert_eq!(issue.time.ingress_monotonic.as_millis(), 5);
+    assert_eq!(issue.time.ingress_monotonic.as_micros(), 5_000);
     assert_eq!(issue.provenance, available.payload().provenance);
 }

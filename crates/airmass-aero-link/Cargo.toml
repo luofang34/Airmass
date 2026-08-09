@@ -1,0 +1,22 @@
+[package]
+name = "airmass-aero-link"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Maps classified aero-link FIS-B records to Airmass weather ingress"
+license = "MIT"
+
+[features]
+default = []
+std = ["aero-link/std", "airmass-core/std", "thiserror/std"]
+
+[dependencies]
+aero-link = { workspace = true }
+airmass-core = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

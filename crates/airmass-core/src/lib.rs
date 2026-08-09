@@ -45,6 +45,6 @@ pub use store::{
     WeatherStore,
 };
 pub use time::{
-    DeadlineSet, DurationMillis, EvaluationTime, MonotonicTime, SourceTime, SourceTimeKind,
-    TimeBasis, TimeEvidence, TimeQuality, TimeUncertainty, UtcInterval, UtcTime,
+    DeadlineSet, DurationMillis, EvaluationTime, IngressTimeBasis, MonotonicTime, SourceTime,
+    SourceTimeKind, TimeBasis, TimeEvidence, TimeQuality, TimeUncertainty, UtcInterval, UtcTime,
 };

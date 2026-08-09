@@ -117,7 +117,7 @@ struct StepResult {
 #[test]
 fn source_neutral_corpus_matches_the_public_core_contract() {
     let corpus: Corpus =
-        serde_json::from_str(include_str!("../../../conformance/weather-ingress-v1.json"))
+        serde_json::from_str(include_str!("../../../conformance/weather-ingress-v2.json"))
             .expect("conformance corpus must parse");
     assert_eq!(corpus.corpus_version, 1);
     assert_eq!(
@@ -156,7 +156,7 @@ fn run_scenario(scenario: &Scenario, producer_id: u64) {
 fn apply_step(store: &mut WeatherStore, step: &Step) -> StepResult {
     let now = EvaluationTime::new(
         UtcTime::from_unix_millis(step.utc),
-        MonotonicTime::from_millis(step.monotonic),
+        monotonic_millis(step.monotonic),
     );
     let (status, published, deadline) = match step.operation {
         Operation::Advance => {
@@ -246,7 +246,7 @@ fn timed<T>(value: T, step: &Step, source: &str, epoch: u64) -> TimedField<T> {
     TimedField::new(
         value,
         TimeEvidence::new(
-            MonotonicTime::from_millis(step.monotonic),
+            monotonic_millis(step.monotonic),
             source_time(step.source_time),
         ),
         QualityEvidence::Unavailable,
@@ -302,10 +302,14 @@ fn assert_deadline(scenario: &str, step: &Step, deadline: DeadlineSet) {
         "UTC deadline in {scenario}"
     );
     assert_eq!(
-        deadline.monotonic.map(MonotonicTime::as_millis),
+        deadline.monotonic.map(|value| value.as_micros() / 1_000),
         step.expect.next_monotonic,
         "monotonic deadline in {scenario}"
     );
+}
+
+fn monotonic_millis(value: u64) -> MonotonicTime {
+    MonotonicTime::from_micros(value * 1_000)
 }
 
 fn assert_product(scenario: &str, step: &Step, handle: &WeatherSnapshotHandle) {
