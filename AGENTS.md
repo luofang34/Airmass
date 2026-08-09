@@ -21,18 +21,20 @@ rewrite as separate work.
 
 ## Primary goal
 
-Airmass converts FIS-B ground uplinks into current weather products. It accepts
-`FisBMessage` values from `aero-link`. It emits weather products that an
-application can show, record, or send to another system.
+Airmass holds meteorological state. It accepts weather products from more than
+one source. It emits weather products that an application can show, record, or
+send to another system.
 
-Airmass owns the state that spans more than one reception. `aero-link` decodes
-one APDU at a time and keeps no state. Airmass assembles product files from
-segments, replaces a product when a newer one arrives, and removes a product
-when it expires.
+Airmass owns the state that spans more than one reception. A source supplies one
+product at a time. Airmass keeps the current product, replaces a product when a
+newer one arrives, and removes a product when it expires.
+
+Meteorological data is perishable. It has no cycle-dated baseline. That is the
+property that separates Airmass from `Navdata`.
 
 ## Hard boundary
 
-Airmass starts after FIS-B APDU decoding. It never acquires radio samples and
+Airmass holds meteorological state only. It never acquires radio samples and
 never processes traffic.
 
 Airmass must not depend on or contain:
@@ -41,11 +43,29 @@ Airmass must not depend on or contain:
   control, or any USB stack;
 - DriverKit, Swift, Objective-C, or Xcode types;
 - aircraft tracks, track identity, CPR position reconstruction, or fusion.
-  Those belong to `Surveillance`.
+  Those belong to `Surveillance`;
+- NOTAM, TFR, or special-use airspace state. Those belong to `Airspace`;
+- the NASR or CIFP baseline. That belongs to `Navdata`;
+- a map renderer or a tile format.
 
-Airmass reads only the weather projection of a reception. `aero-link` supplies
-it through `ReceptionEvent::fis_b_messages()`. Airmass must not read
-`ReceptionEvent::traffic()`.
+A 978 MHz ground uplink is not a weather stream. It carries weather products,
+aeronautical notices, and link-service reports together. A product router sends
+each product to its owner. Airmass accepts only the products that the routing
+table assigns to it.
+
+Airmass must not read `ReceptionEvent::traffic()`.
+
+## Execution rules
+
+Pilotage ADR-0036 states the execution model. Airmass follows it.
+
+- The Airmass store is a synchronous, single-writer core.
+- The caller supplies the time. Airmass contains no clock.
+- Airmass contains no channel, no task, no lock, and no timer.
+- An asynchronous provider trait belongs in an adapter package, not in the
+  store.
+- Each channel between Airmass and another component states its bound, its
+  backpressure policy, the owner of a dropped item, and the drop counter.
 
 ## Dependency on aero-link
 
@@ -65,10 +85,10 @@ against. `Surveillance` uses the same method.
 
 `aero-link` issue #10 records the split. Keep to it.
 
-- `aero-link` decodes one APDU without state. It supplies the product
-  identifier, the product time, the segmentation fields, and the payload bytes.
-- Airmass performs every operation that needs more than one APDU or more than
-  one reception.
+- `aero-link` decodes one APDU without state. It assembles the segments of one
+  product file. It supplies the product identifier, the product status, the
+  encoding family, the product time, and the payload bytes.
+- Airmass performs every operation that needs more than one product or more
+  than one source.
 
-Do not add weather state to `aero-link`. Do not add FIS-B decoding to
-`Surveillance`.
+Do not add weather state to `aero-link`. Do not add a second segment assembler.

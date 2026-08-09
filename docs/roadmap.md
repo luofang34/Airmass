@@ -12,9 +12,12 @@ contract.
 **Goal.** Read `FisBMessage` values from `aero-link` and prove that Airmass
 receives what the contract promises.
 
-`aero-link` supplies the weather projection through
+`aero-link` supplies the FIS-B product projection through
 `ReceptionEvent::fis_b_messages()`. That method returns nothing for a traffic
-downlink. Airmass must not call `ReceptionEvent::traffic()`.
+downlink. It is not a weather projection: it carries weather products,
+aeronautical notices, and link-service reports together. A product router sends
+each product to its owner, and Airmass accepts only the products that the
+routing table assigns to it. Airmass must not call `ReceptionEvent::traffic()`.
 
 Each message carries:
 
@@ -36,25 +39,24 @@ Each message carries:
 **Reason for the position.** Every later step reads this input. A change to the
 input contract after step 3 would cause rework in each step.
 
-## Step 2. Assemble a product file from its segments
+## Step 2. Take complete products from the shared assembler
 
-**Goal.** Join the segments of one product file into one complete payload.
+**Goal.** Accept a `CompleteFisBProduct` and keep only the products that the
+routing table assigns to Airmass.
 
-A FIS-B product can be larger than one APDU. The sender sets the S flag and
-supplies the product file identity, the segment index, and the segment count.
-`aero-link` exposes those fields but does not join the segments.
+Segment assembly does not belong to Airmass. Pilotage ADR-0036 puts bounded
+assembly in `aero-link`, because one uplink stream serves Airmass and Airspace
+and two assemblers would repeat a mechanism and could disagree.
 
 **Acceptance.**
 
-- Airmass joins the segments of one product file in any arrival order.
-- Airmass discards an incomplete file after a stated time limit, and counts the
-  discard.
-- Airmass discards a file whose segments disagree, and counts the discard.
-- A test supplies segments out of order and shows one complete payload.
-- A test supplies an incomplete file and shows no product and one count.
+- Airmass accepts a complete product and its product identifier.
+- Airmass ignores a product that the routing table assigns to another owner.
+- A test supplies a mixed product sequence and shows that Airmass keeps only
+  meteorological products.
 
-**Reason for the position.** A product decoder needs a complete payload. A
-decoder written before assembly would only accept a single-segment product.
+**Reason for the position.** A product decoder needs a complete payload, and
+the routing rule decides which products arrive at all.
 
 ## Step 3. Hold the current set of products
 
@@ -115,20 +117,24 @@ altitude meaning, and the no-data value are not.
 **Reason for the position.** This step is the largest. It must follow assembly,
 because a precipitation image is almost always segmented.
 
-## Step 6. Decode the text and graphic overlay products
+## Step 6. Decode the meteorological overlay products
 
-**Goal.** Convert NOTAM, TFR, SIGMET, G-AIRMET, and airspace status products
-into typed records with their shapes.
+**Goal.** Convert SIGMET, Convective SIGMET, AIRMET, G-AIRMET, and center
+weather advisory products into typed records with their shapes.
+
+NOTAM, TFR, and special-use airspace status are not in this step. `Airspace`
+owns them. An earlier version of this roadmap put them here, which mixed two
+categories in one component.
 
 **Acceptance.**
 
 - Airmass reads both the text records and the graphic overlay records.
 - Airmass supplies the shape points for a graphic record.
-- A test shows that a provisional product identifier is marked as provisional
-  in the output.
+- A test shows that Airmass rejects a notice product, because that product
+  belongs to `Airspace`.
 
-**Reason for the position.** These products need the assembly from step 2 and
-the record structure from step 4. Their shapes need no palette, so they can
+**Reason for the position.** These products need a complete payload from step 2
+and the record structure from step 4. Their shapes need no palette, so they can
 follow the Global Block work or run beside it.
 
 ## Step 7. Record and replay
@@ -150,5 +156,8 @@ an available method rather than creating the first one.
 
 - Rendering, tiles, and palettes. An application owns them.
 - Aircraft tracks. `Surveillance` owns them.
-- Radio control, USB, and framing. `aero-link` owns them.
+- NOTAM, TFR, and special-use airspace status. `Airspace` owns them.
+- The NASR and CIFP baseline. `Navdata` owns it.
+- Radio control, USB, framing, and FIS-B segment assembly. `aero-link` owns
+  them.
 - Stateless single-APDU decoding. `aero-link` owns it, per its issue #10.

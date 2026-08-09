@@ -1,20 +1,26 @@
 # Airmass
 
-`Airmass` is a platform-independent Rust library that converts FIS-B ground
-uplinks into current weather products. It accepts decoded FIS-B application
-protocol data units from `aero-link`. It emits weather products that an
-application can show, record, or send to another system.
+`Airmass` is a platform-independent Rust library that holds meteorological
+state. It accepts weather products from more than one source: FIS-B ground
+uplinks through `aero-link`, and network providers such as the Aviation Weather
+Center. It emits weather products that an application can show, record, or send
+to another system.
 
-The library owns the state that spans more than one reception: assembly of a
-product file from its segments, replacement of a product when a newer one
-arrives, expiration of a product that is too old, and per-product history. It
-never acquires radio samples, never owns aircraft tracks, and never contains a
-runtime, socket, or renderer.
+The library owns the state that spans more than one reception: replacement of a
+product when a newer one arrives, expiration of a product that is too old,
+comparison between two sources of the same product, and per-product history. It
+never acquires radio samples, never assembles FIS-B segments, never owns
+aircraft tracks or notices, and never contains a runtime, socket, or renderer.
+
+Meteorological data is perishable and has no cycle-dated baseline. That property
+separates Airmass from `Navdata`, which holds a baseline, and from `Airspace`,
+which holds notices that amend a baseline.
 
 FIS-B carries weather and aeronautical information on 978 MHz. A ground station
-transmits it. An aircraft receives it. The information includes precipitation
-images, cloud tops, turbulence, icing, lightning, NOTAMs, temporary flight
-restrictions, SIGMETs, and text reports such as METAR and TAF.
+transmits it. An aircraft receives it. Airmass takes only the meteorological
+part: precipitation images, cloud tops, turbulence, icing, lightning, SIGMET,
+AIRMET, and text reports such as METAR and TAF. NOTAM, temporary flight
+restrictions, and special-use airspace status go to `Airspace`.
 
 [AGENTS.md](AGENTS.md) states the binding rules. The
 [roadmap](docs/roadmap.md) states the order of work and the acceptance for each
@@ -23,30 +29,38 @@ step. Airmass has no implementation yet.
 ## Position in the system
 
 ```text
-978 MHz radio
+978 MHz radio                      network providers
+      |                                   |
+      v                                   |
+aero-link      framing, FEC, decode,      |
+               bounded segment assembly   |
+      |                                   |
+      +---- traffic ---------> Surveillance
       |
-      v
-aero-link            framing, FEC, one-APDU FIS-B decode
-      |
-      +---- traffic ------> Surveillance      aircraft tracks
-      |
-      +---- FIS-B --------> Airmass           weather products
+      +---- complete FIS-B product --> product router
+                                          |
+                    weather products -----+----> Airmass <--- AWC and others
+                    notices --------------+----> Airspace
+                    link-service ---------+----> diagnostics
 ```
 
-`aero-link` decodes one APDU at a time and keeps no state between receptions.
-It supplies the product identifier, the product time, the segmentation fields,
-and the payload bytes. `Airmass` performs every operation that needs more than
-one APDU or more than one reception.
+`aero-link` decodes one APDU at a time and assembles the segments of one product
+file. It supplies the product identifier, the product status, the encoding
+family, the product time, and the payload bytes. One assembler serves every
+category, because one uplink stream carries all of them.
 
-`Surveillance` and `Airmass` are siblings. Neither reads the other. A reception
-that carries traffic goes to `Surveillance`. A reception that carries a ground
-uplink goes to `Airmass`. `aero-link` makes the split: `traffic()` returns
-nothing for an uplink, and `fis_b_messages()` returns nothing for a downlink.
+`Surveillance`, `Airmass`, and `Airspace` are siblings. None reads another. A
+reception that carries traffic goes to `Surveillance`. A complete FIS-B product
+goes to the owner that the routing table names.
 
 ## Boundary
 
-Airmass starts after FIS-B APDU decoding. It contains no USB stack, no radio
-control, no aircraft track state, and no map renderer.
+Airmass holds meteorological state only. It contains no USB stack, no radio
+control, no segment assembler, no aircraft track state, no notice state, no
+navigation baseline, and no map renderer.
+
+The Airmass store is a synchronous, single-writer core. The caller supplies the
+time. Asynchronous execution belongs between components, per Pilotage ADR-0036.
 
 An application composes the outputs. It can put a weather layer and a traffic
 layer on one map. Airmass does not draw the layer, and Surveillance does not
@@ -59,6 +73,9 @@ The repository holds the design and the roadmap. Work starts at step 1 of the
 
 Related work:
 
+- Pilotage ADR-0036 assigns domain state by data category and states the
+  execution and channel rules.
 - `aero-link` issue #10 records the product-decode ownership split.
 - `aero-link` issue #34 records the decision to put the weather consumer here.
-- `aero-link` issue #33 identified the products that a ground station sends.
+- `aero-link` issue #33 identified the products that a ground station sends and
+  supplies the routing table.
