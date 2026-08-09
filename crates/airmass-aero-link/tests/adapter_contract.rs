@@ -3,21 +3,32 @@
 #![allow(clippy::expect_used, clippy::panic)]
 
 use aero_link::{
-    FisBAssemblerConfig, FisBContributor, FisBDeliveryPath, FisBFlags, FisBMessage, FisBOrigin,
-    FisBOutputLimits, FisBProduct, FisBProvenanceLimits, FisBSegmentation, FisBSourceTimeQuality,
-    FisBTime,
+    CorrectedUatFrame, FisBAssemblerConfig, FisBContributor, FisBDeliveryPath, FisBFlags,
+    FisBMessage, FisBOrigin, FisBOutputLimits, FisBProduct, FisBProvenanceLimits, FisBSegmentation,
+    FisBSourceTimeQuality, FisBTime, ReceptionEvent, UatDecoder, UatFrameClass,
 };
 use airmass_aero_link::{AdapterError, AeroLinkAdapter};
 use airmass_core::{
-    AbsenceReason, FieldState, IngressTimeBasis, SourceEpoch, SourceProductRevision,
-    TimeUncertainty, WeatherIngressEvent, WeatherOrigin,
+    AbsenceEvidence, AbsenceReason, FieldState, FlightCategory, IngressTimeBasis, SourceEpoch,
+    SourceProductRevision, TimeUncertainty, TimedField, WeatherIngressEvent, WeatherOrigin,
+    WeatherProduct, WeatherReportType,
 };
+
+const CAPTURED_UPLINK: &str = include_str!("../test-data/uat/uplink-captured-corrected.hex");
+const CAPTURED_WINDS_TEXT: &str = concat!(
+    "FT                       12000       18000   24000   30000    34000  39000                         \n",
+    "                        3522+00 3631-13 0141-27 035046 046656 365258",
+);
 
 const MIXED_PRODUCT_8: &[u8] = &[
     33, 32, 45, 48, 203, 0, 0, 18, 1, 144, 212, 45, 48, 203, 129, 37, 217, 131, 46, 82, 128, 51,
     19, 16, 0, 48, 1, 148, 212, 24, 148, 237, 10, 12, 178, 195, 6, 160, 104, 208, 108, 129, 162,
     152, 128, 123, 65, 37, 35, 69, 82, 4, 18, 60, 69, 67, 82, 5, 80, 16, 21, 5, 78, 5, 78, 5, 96,
     73, 48, 16, 140, 20,
+];
+const METAR_PAYLOAD: &[u8] = &[
+    52, 85, 1, 74, 2, 202, 24, 184, 48, 219, 29, 181, 197, 168, 49, 227, 12, 53, 45, 72, 53, 76,
+    216, 2, 44, 236, 51, 194, 12, 176, 191, 28, 32, 7, 46, 121, 200,
 ];
 
 #[test]
@@ -163,6 +174,106 @@ fn mixed_product_8_emits_no_weather_and_no_error() {
 }
 
 #[test]
+fn global_block_has_no_typed_value_and_no_error() {
+    let mut adapter = AeroLinkAdapter::default();
+    let batch = adapter
+        .accept_message(&message(63, &[1, 2, 3]), contributor(7, 1, 100))
+        .expect("the Global Block product must map without an error");
+    let product = weather_product(&batch.values()[0]);
+    let FieldState::Absent(absence) = product.typed_value() else {
+        panic!("a Global Block product must not have a text value");
+    };
+    assert_eq!(absence.reason(), AbsenceReason::Unsupported);
+    assert!(matches!(absence.evidence(), AbsenceEvidence::Source { .. }));
+}
+
+#[test]
+fn product_413_maps_a_metar_with_its_flight_category() {
+    let mut adapter = AeroLinkAdapter::default();
+    let batch = adapter
+        .accept_message(&message(413, METAR_PAYLOAD), contributor(7, 1, 100))
+        .expect("the METAR product must map without an error");
+    let product = weather_product(&batch.values()[0]);
+    let reports = product
+        .typed_value()
+        .as_present()
+        .and_then(|field| field.value.text_reports())
+        .expect("Product 413 must have text reports");
+    let report = reports.first().expect("the product must contain one METAR");
+    assert_eq!(
+        report.report_type().as_present().map(|field| field.value),
+        Some(WeatherReportType::Metar)
+    );
+    assert_eq!(report.text().value, "18005KT 5SM BKN030 20/10 A2992");
+    assert_eq!(
+        report
+            .flight_category()
+            .as_present()
+            .map(|field| field.value),
+        Some(FlightCategory::Mvfr)
+    );
+    let encoded =
+        serde_json::to_vec(&batch.values()[0]).expect("the typed ingress record must serialize");
+    let decoded: airmass_core::WeatherIngress =
+        serde_json::from_slice(&encoded).expect("the typed ingress record must deserialize");
+    assert_eq!(decoded, batch.values()[0]);
+}
+
+#[test]
+fn live_capture_maps_the_complete_winds_report_with_field_evidence() {
+    let product = product_from_live_capture();
+    let typed = product
+        .typed_value()
+        .as_present()
+        .expect("Product 413 must have a typed value");
+    let reports = typed
+        .value
+        .text_reports()
+        .expect("Product 413 must contain text reports");
+    assert_eq!(reports.len(), 1);
+    let report = &reports[0];
+    let report_type = report
+        .report_type()
+        .as_present()
+        .expect("the captured report type must be present");
+    assert_eq!(
+        report_type.value,
+        WeatherReportType::WindsAndTemperaturesAloft
+    );
+    let station = report
+        .station_id()
+        .as_present()
+        .expect("the captured station must be present");
+    assert_eq!(station.value.as_str(), "BCE");
+    let time = report
+        .report_time()
+        .as_present()
+        .expect("the captured report time must be valid");
+    assert_eq!(
+        (
+            time.value.day_of_month(),
+            time.value.hour(),
+            time.value.minute()
+        ),
+        (25, 0, 0)
+    );
+    assert_eq!(report.text().value, CAPTURED_WINDS_TEXT);
+    let FieldState::Absent(category) = report.flight_category() else {
+        panic!("a winds report must not have a flight category");
+    };
+    assert_eq!(category.reason(), AbsenceReason::NotApplicable);
+    assert!(matches!(
+        category.evidence(),
+        AbsenceEvidence::Source { .. }
+    ));
+    assert_same_evidence(typed, &product);
+    assert_same_evidence(report_type, &product);
+    assert_same_evidence(station, &product);
+    assert_same_evidence(time, &product);
+    assert_same_evidence(report.text(), &product);
+}
+
+#[test]
 fn source_restart_keeps_the_new_epoch() {
     let mut adapter = AeroLinkAdapter::default();
     let first = adapter
@@ -203,6 +314,54 @@ fn assembly_failure_is_not_an_empty_option() {
         .accept_message(&message(63, &[1]), contributor(7, 1, 100))
         .expect_err("the Result error must reach the adapter caller");
     assert!(matches!(error, AdapterError::Assembly(_)));
+}
+
+fn product_from_live_capture() -> WeatherProduct {
+    let bytes = decode_hex(CAPTURED_UPLINK.trim());
+    let frame = CorrectedUatFrame::try_from_boxed_bytes(
+        UatFrameClass::GroundUplink,
+        bytes.into_boxed_slice(),
+    )
+    .expect("the captured frame must have the uplink length");
+    let reception = UatDecoder::default()
+        .decode_corrected(frame, -3, 9, 0)
+        .expect("the captured uplink must decode");
+    let event = ReceptionEvent::uat978(10, reception);
+    let mut adapter = AeroLinkAdapter::default();
+    let mut products = Vec::new();
+    for projection in event.information_frames() {
+        let batch = adapter
+            .accept_projection(projection)
+            .expect("the captured product must adapt");
+        products.extend(
+            batch
+                .values()
+                .iter()
+                .map(|ingress| weather_product(ingress).clone()),
+        );
+    }
+    assert_eq!(products.len(), 1);
+    products
+        .pop()
+        .expect("the capture must contain Product 413")
+}
+
+fn decode_hex(value: &str) -> Vec<u8> {
+    assert_eq!(value.len() % 2, 0);
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let text = core::str::from_utf8(pair).expect("the fixture must contain ASCII hex");
+            u8::from_str_radix(text, 16).expect("the fixture must contain valid hex")
+        })
+        .collect()
+}
+
+fn assert_same_evidence<T>(field: &TimedField<T>, product: &WeatherProduct) {
+    assert_eq!(field.time, product.payload().time);
+    assert_eq!(field.quality, product.payload().quality);
+    assert_eq!(field.provenance, product.payload().provenance);
 }
 
 fn weather_product(ingress: &airmass_core::WeatherIngress) -> &airmass_core::WeatherProduct {

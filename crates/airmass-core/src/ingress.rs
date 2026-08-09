@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Schema version written for weather ingress records.
-pub const CURRENT_WEATHER_INGRESS_SCHEMA_VERSION: u16 = 2;
+pub const CURRENT_WEATHER_INGRESS_SCHEMA_VERSION: u16 = 3;
 
 /// Product data or a cancellation from one source.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

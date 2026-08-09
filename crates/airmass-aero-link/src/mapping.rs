@@ -14,7 +14,10 @@ use airmass_core::{
 };
 use thiserror::Error;
 
-use crate::WeatherIngressBatch;
+use crate::{
+    WeatherIngressBatch,
+    text_report::{SourceEvidence, decode_weather_value},
+};
 
 const PAYLOAD_MEDIA_TYPE: &str = "application/vnd.aero-link.fis-b";
 const RAW_ID_NAMESPACE: &str = "aero-link/fis-b-exchange-v1";
@@ -61,6 +64,7 @@ fn map_weather_record(record: &FisBExchangeRecord) -> Result<WeatherIngressBatch
         values.push(map_contributor(
             &product_id,
             &raw_identity,
+            numeric_product_id,
             payload,
             protocol.product_file_id(),
             contributor,
@@ -75,6 +79,7 @@ fn map_weather_record(record: &FisBExchangeRecord) -> Result<WeatherIngressBatch
 fn map_contributor(
     product_id: &WeatherProductId,
     raw_identity: &RawProductIdentity,
+    numeric_product_id: u16,
     payload: &[u8],
     product_file_id: Option<u16>,
     contributor: FisBContributor,
@@ -82,6 +87,8 @@ fn map_contributor(
     let provenance = provenance(contributor, raw_identity.clone());
     let time = time_evidence(contributor);
     let quality = QualityEvidence::Unavailable;
+    let evidence = SourceEvidence::new(time, quality.clone(), provenance.clone());
+    let typed_value = decode_weather_value(numeric_product_id, payload, &evidence);
     let payload = TimedField::new(
         WeatherPayload::new(PAYLOAD_MEDIA_TYPE, copy_bytes(payload)?),
         time,
@@ -91,6 +98,7 @@ fn map_contributor(
     let source_absence = |reason| source_absence(reason, time, quality.clone(), provenance.clone());
     let product = WeatherProduct::new(
         payload,
+        typed_value,
         FieldState::absent(source_absence(AbsenceReason::Unsupported)),
         FieldState::absent(source_absence(AbsenceReason::NotObserved)),
         FieldState::absent(source_absence(AbsenceReason::NotObserved)),

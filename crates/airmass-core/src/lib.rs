@@ -14,10 +14,12 @@ mod identity;
 mod ingress;
 mod product;
 mod provenance;
+mod report;
 mod schema;
 mod snapshot;
 mod store;
 mod time;
+mod value;
 
 pub use field::{AbsenceEvidence, AbsenceReason, AbsentField, FieldState, TimedField};
 pub use identity::{
@@ -34,6 +36,10 @@ pub use product::{
 pub use provenance::{
     DeliveryPath, ProductProvenance, QualityEvidence, RawProductIdentity, SourceRef, WeatherOrigin,
 };
+pub use report::{
+    Ceiling, FlightCategory, StatuteMiles, TextWeatherReport, WeatherReportTime, WeatherReportType,
+    WeatherStationId,
+};
 pub use schema::WeatherSchemaError;
 pub use snapshot::{
     CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION, SelectionCriterion, SelectionExplanation,
@@ -48,3 +54,4 @@ pub use time::{
     DeadlineSet, DurationMillis, EvaluationTime, IngressTimeBasis, MonotonicTime, SourceTime,
     SourceTimeKind, TimeBasis, TimeEvidence, TimeQuality, TimeUncertainty, UtcInterval, UtcTime,
 };
+pub use value::WeatherValue;

@@ -117,7 +117,7 @@ struct StepResult {
 #[test]
 fn source_neutral_corpus_matches_the_public_core_contract() {
     let corpus: Corpus =
-        serde_json::from_str(include_str!("../../../conformance/weather-ingress-v2.json"))
+        serde_json::from_str(include_str!("../../../conformance/weather-ingress-v3.json"))
             .expect("conformance corpus must parse");
     assert_eq!(corpus.corpus_version, 1);
     assert_eq!(
@@ -235,6 +235,7 @@ fn make_product(step: &Step, source: &str, epoch: u64) -> WeatherProduct {
             source,
             epoch,
         ),
+        absent(),
         absent(),
         absent(),
         validity,

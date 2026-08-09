@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod counters;
+mod validation;
 
 const PRODUCT: &str = "regional-radar";
 
@@ -76,7 +77,7 @@ pub(super) fn product_ingress(
     WeatherIngress::product(
         WeatherProductId::new(PRODUCT),
         SourceProductRevision::new(revision),
-        WeatherProduct::new(payload, absent(), absent(), absent(), absent()),
+        WeatherProduct::new(payload, absent(), absent(), absent(), absent(), absent()),
     )
 }
 
@@ -91,6 +92,7 @@ fn expiring_ingress(valid_end: i64, max_age: u64) -> WeatherIngress {
             epoch,
             monotonic,
         ),
+        absent(),
         absent(),
         absent(),
         FieldState::present(field(
@@ -357,6 +359,7 @@ fn future_effective_product_is_absent_until_its_deadline() {
     };
     let product = WeatherProduct::new(
         product.payload().clone(),
+        product.typed_value().clone(),
         product.issue_time().clone(),
         FieldState::present(field(UtcTime::from_unix_millis(50), "alpha", 1, 10)),
         product.valid_period().clone(),
@@ -427,32 +430,4 @@ fn wrapping_revision_ends_the_producer_without_publication() {
         .advance_time(at(30, 30))
         .expect_err("producer must end after revision exhaustion");
     assert!(matches!(ended, StoreError::ProducerEnded { .. }));
-}
-
-#[test]
-fn field_evidence_must_name_the_event_source() {
-    let payload = field(
-        WeatherPayload::new("application/octet-stream", vec![1]),
-        "alpha",
-        1,
-        10,
-    );
-    let product = WeatherProduct::new(
-        payload,
-        FieldState::present(field(UtcTime::from_unix_millis(1), "beta", 1, 10)),
-        absent(),
-        absent(),
-        absent(),
-    );
-    let ingress = WeatherIngress::product(
-        WeatherProductId::new(PRODUCT),
-        SourceProductRevision::new(1),
-        product,
-    );
-    let mut store = WeatherStore::new(StoreConfig::default(), ProducerInstanceId::new(1))
-        .expect("configuration must be valid");
-    let error = store
-        .accept(ingress, at(10, 10))
-        .expect_err("mixed field sources must fail");
-    assert!(matches!(error, StoreError::FieldSourceMismatch { .. }));
 }
