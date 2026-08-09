@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Airmass
+        uses: actions/checkout@v7
+        with:
+          path: Airmass
+          persist-credentials: false
+      - name: Read the aero-link revision
+        id: aero-link
+        working-directory: Airmass
+        run: printf 'ref=%s\n' "$(cat ci/aero-link.ref)" >> "$GITHUB_OUTPUT"
+      - name: Check the aero-link deploy key
+        env:
+          AERO_LINK_DEPLOY_KEY: ${{ secrets.AERO_LINK_DEPLOY_KEY }}
+        run: |
+          if [ -z "$AERO_LINK_DEPLOY_KEY" ]; then
+            printf '%s\n' 'AERO_LINK_DEPLOY_KEY must contain the read-only aero-link deploy key.' >&2
+            exit 1
+          fi
+      - name: Check out aero-link
+        uses: actions/checkout@v7
+        with:
+          repository: luofang34/aero-link
+          path: aero-link
+          ref: ${{ steps.aero-link.outputs.ref }}
+          ssh-key: ${{ secrets.AERO_LINK_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Install the Rust toolchain
+        run: rustup toolchain install 1.88 --profile minimal --component clippy,rustfmt
+      - name: Run CI
+        working-directory: Airmass
+        env:
+          RUSTUP_TOOLCHAIN: "1.88"
+        run: ./scripts/ci.sh

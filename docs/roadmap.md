@@ -1,7 +1,8 @@
 # Airmass roadmap
 
 This document states the order of work. Each step gives its goal, its
-acceptance, and the reason for its position in the order. No step is started.
+acceptance, and the reason for its position in the order. Steps 1 and 2 are
+complete.
 
 A later step must not begin before its stated dependency is complete. The order
 puts the input contract first, because every step after it consumes that
@@ -35,6 +36,7 @@ Each message carries:
 - A test feeds a mixed stream and shows that traffic receptions produce no
   weather product and no error.
 - A test shows that an unknown product keeps its payload bytes unchanged.
+- A CI check rejects a call to `ReceptionEvent::traffic()`.
 
 **Reason for the position.** Every later step reads this input. A change to the
 input contract after step 3 would cause rework in each step.
@@ -58,13 +60,22 @@ and two assemblers would repeat a mechanism and could disagree.
 **Reason for the position.** A product decoder needs a complete payload, and
 the routing rule decides which products arrive at all.
 
-## Step 3. Hold the current set of products
+## Step 3. Hold the current products and publish snapshots
 
-**Goal.** Keep the product that is current, and remove the product that is not.
+**Goal.** Keep the product that is current. Remove the product that is not
+current. Publish an immutable snapshot of the product state.
 
 FIS-B repeats each product. A later transmission replaces an earlier one. Each
 product also has a valid period. A product that is too old must not stay in the
 current set.
+
+The caller can retain a snapshot after the store changes. The snapshot carries
+the identity of the producer instance. It also carries a revision that orders
+the published states from that producer. Each field uses the `TimedField<T>`
+pattern. This pattern keeps the value, time, quality, and provenance together.
+An absent value states why it is absent.
+
+A gridded product is a typed grid. It is not a feature or a renderer value.
 
 **Acceptance.**
 
@@ -73,6 +84,19 @@ current set.
 - A caller supplies the time. Airmass contains no clock.
 - A test shows that an out-of-order arrival does not replace a newer product
   with an older one.
+- A snapshot is an owned value or a reference-counted handle. It does not
+  borrow store state.
+- The producer identity changes when the caller creates a new store.
+- The revision uses `wrapping_add(1)`. It changes for each published state and
+  only when the published state changes.
+- Each field carries its time, quality, and provenance in the
+  `TimedField<T>` pattern.
+- Each absent value carries a typed reason.
+- A versioned exported schema gates the wire format. A reader returns a typed
+  error for an unknown schema version.
+- A test retains a snapshot while the store changes. The retained snapshot
+  does not change.
+- A test shows that two stores have different producer identities.
 
 **Reason for the position.** Lifecycle is the state that `aero-link` cannot
 hold, so it is the first thing that only Airmass can supply. Product decoders

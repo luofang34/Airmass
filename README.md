@@ -24,7 +24,7 @@ restrictions, and special-use airspace status go to `Airspace`.
 
 [AGENTS.md](AGENTS.md) states the binding rules. The
 [roadmap](docs/roadmap.md) states the order of work and the acceptance for each
-step. Airmass has no implementation yet.
+step. The product store is not implemented.
 
 ## Position in the system
 
@@ -68,8 +68,8 @@ supply the weather.
 
 ## Status
 
-The repository holds the design and the roadmap. Work starts at step 1 of the
-[roadmap](docs/roadmap.md).
+The repository holds the design, the portable input contract tests, and the
+roadmap. Steps 1 and 2 of the [roadmap](docs/roadmap.md) are complete.
 
 Related work:
 
