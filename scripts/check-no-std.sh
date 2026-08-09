@@ -9,7 +9,13 @@ for target in \
     cargo check --locked \
         -p airmass-aero-link \
         -p airmass-core \
+        -p airmass-geojson \
         -p airmass \
         --no-default-features \
+        --target "$target"
+    cargo check --locked \
+        -p airmass-geojson \
+        --no-default-features \
+        --features geojson \
         --target "$target"
 done

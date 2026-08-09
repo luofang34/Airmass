@@ -1,0 +1,24 @@
+[package]
+name = "airmass-geojson"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Renderer-neutral weather features from Airmass snapshots"
+license = "MIT"
+
+[features]
+default = []
+geojson = ["dep:serde", "dep:serde_json", "dep:thiserror"]
+
+[dependencies]
+airmass-core = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { version = "1.0", default-features = false, features = ["alloc", "float_roundtrip"], optional = true }
+thiserror = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

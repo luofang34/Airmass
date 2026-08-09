@@ -67,6 +67,23 @@ if printf '%s\n' "$root_tree" | grep -qE '^(aero-link|airmass-aero-link) '; then
     fail 'the default Airmass build must not include a source adapter.'
 fi
 
+feature_tree=$(cargo tree --locked -p airmass-geojson --no-default-features \
+    --edges normal,build --prefix none)
+if printf '%s\n' "$feature_tree" | grep -qE \
+    '^(aero-link|airmass-aero-link|serde_json) '; then
+    fail 'the default feature adapter must not include a source adapter, link service, or GeoJSON encoder.'
+fi
+
+feature_all_tree=$(cargo tree --locked -p airmass-geojson --all-features --prefix none)
+if printf '%s\n' "$feature_all_tree" | grep -qE '^(aero-link|airmass-aero-link) '; then
+    fail 'the feature adapter must not depend on a source adapter or link service.'
+fi
+
+if grep -nE 'maplibre|mapbox|wgpu|bevy|swift' \
+    crates/airmass-geojson/Cargo.toml; then
+    fail 'the feature adapter must not depend on a renderer or platform binding.'
+fi
+
 workspace_tree=$(cargo tree --locked --workspace --all-features --prefix none)
 if printf '%s\n' "$workspace_tree" | grep -qE \
     '^(nusb|rusb|libusb|serialport|tokio|async-std) '; then
