@@ -7,6 +7,7 @@ for target in \
     riscv32imac-unknown-none-elf \
     wasm32-unknown-unknown; do
     cargo check --locked \
+        -p airmass-aero-link \
         -p airmass-core \
         -p airmass \
         --no-default-features \
