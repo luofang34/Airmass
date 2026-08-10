@@ -57,10 +57,27 @@ feature identity.
 time, quality, provenance, and absence reason. A METAR or SPECI feature keeps
 its typed flight category field.
 
+## Advisory shapes
+
+A typed advisory becomes a shape when these values are present:
+
+- advisory identity;
+- polygon or polyline geometry.
+
+The feature identity contains the producer identity, product identity,
+advisory identity, and duplicate occurrence. `AdvisoryShapeFeature` keeps all
+source positions. It also keeps the complete typed advisory.
+
+The typed advisory contains its validity and vertical fields. Validity is a
+period or a forecast point. An altitude band has a base, a top, and the source
+reference for each limit. A single source altitude stays a single altitude. An
+absent source band stays absent.
+
 ## Vector product rule
 
-The adapter maps a value only when Airmass supplies typed vector data. It does
-not decode an opaque payload. It does not infer hazard geometry from text.
+The feature adapter maps a value only when Airmass supplies typed vector data.
+It does not decode an opaque payload. A source adapter can decode text
+coordinates before it creates `WeatherIngress`.
 
 A gridded product produces no feature and no error. A grid needs a raster data
 path. It is not a GeoJSON feature.
@@ -70,10 +87,11 @@ path. It is not a GeoJSON feature.
 GeoJSON is an optional encoding. It is not the Rust API. The `geojson` feature
 adds `encode_feature_delta`.
 
-An upsert becomes an RFC 7946 Feature with a Point geometry. The coordinate
-order is longitude and then latitude. A removal uses a null geometry. The
-properties contain the operation, all three revision values, source selection,
-and the complete typed report.
+An upsert becomes an RFC 7946 Feature. A text report uses Point geometry. An
+advisory shape uses Polygon or LineString geometry. The coordinate order is
+longitude and then latitude. A removal uses null geometry. The properties
+contain the operation, all three revision values, source selection, and the
+complete typed weather value.
 
 The default crate build does not link `serde_json`. The default build and the
 `geojson` build are both `no_std + alloc`.

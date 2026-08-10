@@ -48,13 +48,20 @@ link-health records to the Airmass core.
 The adapter maps Product 413 data to typed text reports. Each report keeps its
 type, station identity, report time, and source text. A METAR or SPECI report
 also keeps its flight category when the ceiling and visibility are known.
-Unsupported weather products keep their source payload and an explicit absent
-typed value.
+
+The adapter maps TWGO weather advisories to typed geometry. Each advisory keeps
+its identity, type, validity, geometry, and source vertical data. Validity is a
+period or a forecast point. Vertical data is an altitude or an altitude band.
+The adapter does not add an altitude band when the source has no band. The
+`accept_message_at` and `accept_projection_at` use caller UTC to resolve
+missing date fields for legacy text advisories. Unsupported weather products keep
+their source payload and an explicit absent typed value.
 
 The [`airmass-geojson` adapter](docs/map-features.md) converts applicable
 snapshot changes to typed weather feature changes. A caller supplies station
 positions. The optional `geojson` feature encodes the changes as RFC 7946
-Feature objects. The adapter does not depend on a renderer, `aero-link`, or
+Feature objects. Text reports become points. Polygon and polyline advisories
+become shapes. The adapter does not depend on a renderer, `aero-link`, or
 `Navdata`.
 
 `aero-link` owns bounded FIS-B assembly and protocol classification. It uses
@@ -90,6 +97,8 @@ a live source is available.
   `airmass-aero-link` adapter.
 - [Airmass #9](https://github.com/luofang34/Airmass/issues/9) defines typed
   DLAC weather reports.
+- [Airmass #13](https://github.com/luofang34/Airmass/issues/13) defines typed
+  weather advisory shapes.
 - [aero-link #62](https://github.com/luofang34/aero-link/issues/62) defines the
   classified FIS-B record contract that the adapter requires.
 - [Pilotage domain snapshot envelope](https://github.com/luofang34/Pilotage/blob/main/docs/domain-snapshot-envelope.md)

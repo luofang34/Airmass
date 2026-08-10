@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Schema version written for exported weather snapshots.
-pub const CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION: u16 = 3;
+pub const CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION: u16 = 4;
 
 /// Rule that decided between weather source candidates.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

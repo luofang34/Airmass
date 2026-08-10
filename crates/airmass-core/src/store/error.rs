@@ -3,8 +3,9 @@
 use thiserror::Error;
 
 use crate::{
-    DurationMillis, MonotonicTime, ProducerInstanceId, SourceId, SourceProductRevision, SourceRef,
-    UtcTime, WeatherProductId, WeatherSchemaError,
+    AdvisoryValidationError, AdvisoryValidity, DurationMillis, MonotonicTime, ProducerInstanceId,
+    SourceId, SourceProductRevision, SourceRef, UtcInterval, UtcTime, WeatherProductId,
+    WeatherSchemaError,
 };
 
 /// Failure to validate or update weather lifecycle state.
@@ -61,6 +62,35 @@ pub enum StoreError {
         actual: usize,
         /// Configured byte limit.
         limit: usize,
+    },
+    /// One advisory product does not contain exactly one lifecycle value.
+    #[error("product {product_id:?} contains {actual} advisories; exactly 1 is required")]
+    AdvisoryCount {
+        /// Product identity.
+        product_id: WeatherProductId,
+        /// Supplied advisory count.
+        actual: usize,
+    },
+    /// An advisory contains invalid source-derived structure.
+    #[error("product {product_id:?} contains an invalid advisory")]
+    InvalidAdvisory {
+        /// Product identity.
+        product_id: WeatherProductId,
+        /// Typed advisory validation failure.
+        #[source]
+        source: AdvisoryValidationError,
+    },
+    /// Product and advisory validity do not identify one lifecycle interval.
+    #[error(
+        "product {product_id:?} has product validity {product_validity:?} and advisory validity {advisory_validity:?}"
+    )]
+    AdvisoryValidityMismatch {
+        /// Product identity.
+        product_id: WeatherProductId,
+        /// Product lifecycle interval.
+        product_validity: Option<UtcInterval>,
+        /// Advisory field interval.
+        advisory_validity: Option<AdvisoryValidity>,
     },
     /// A field names a different source than the event anchor.
     #[error(

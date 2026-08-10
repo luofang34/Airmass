@@ -14,8 +14,9 @@ mod geojson;
 mod position;
 
 pub use feature::{
+    AdvisoryShapeFeature, AdvisoryShapeGeometry, AdvisoryShapeLine, AdvisoryShapeRing,
     FeatureDelta, FeatureRemovalReason, StationPositionResolver, TextReportFeature, WeatherFeature,
-    WeatherFeatureId, WeatherFeatureRevisions, map_snapshot_transition,
+    WeatherFeatureId, WeatherFeatureKey, WeatherFeatureRevisions, map_snapshot_transition,
 };
 #[cfg(feature = "geojson")]
 pub use geojson::{GeoJsonError, encode_feature_delta};

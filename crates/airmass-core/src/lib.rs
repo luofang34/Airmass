@@ -9,6 +9,7 @@
 
 extern crate alloc;
 
+mod advisory;
 mod field;
 mod identity;
 mod ingress;
@@ -21,6 +22,12 @@ mod store;
 mod time;
 mod value;
 
+pub use advisory::{
+    AdvisoryAltitude, AdvisoryAltitudeBand, AdvisoryAltitudeReference, AdvisoryGeometry,
+    AdvisoryGeometryError, AdvisoryLine, AdvisoryPolygon, AdvisoryPosition, AdvisoryRing,
+    AdvisoryValidationError, AdvisoryValidity, WeatherAdvisory, WeatherAdvisoryId,
+    WeatherAdvisoryType,
+};
 pub use field::{AbsenceEvidence, AbsenceReason, AbsentField, FieldState, TimedField};
 pub use identity::{
     ProducerInstanceId, ProductRevision, SnapshotRevision, SourceEpoch, SourceId,

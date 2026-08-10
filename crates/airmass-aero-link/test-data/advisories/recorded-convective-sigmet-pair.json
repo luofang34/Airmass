@@ -1,0 +1,17 @@
+{
+  "source_url": "https://github.com/rand-projects/fisb-decode/blob/c3d3b0473429336b1a98672b2e8b276c24d49765/tg/tg-source/generated/tg30.978",
+  "source_commit": "c3d3b0473429336b1a98672b2e8b276c24d49765",
+  "product_id": 12,
+  "report_year": 20,
+  "report_number": 9878,
+  "graphical_received_unix_millis": 1604048009180,
+  "text_received_unix_millis": 1604048025113,
+  "issue_time": {
+    "month": 10,
+    "day": 30,
+    "hour": 6,
+    "minute": 51
+  },
+  "graphical_payload_hex": "8210000000ff0de6962800000000efd3050a1e06370a1e0837cacf2381392cc8d7e369ed2cc7fa0337e12cc7f54314dd2ccb6b6379912ccacf2381392c",
+  "text_payload_hex": "2210000000ff009b9a58a45d35202cd2c3833c30db5c600cf396143509585813247345520cb715e58130912054e509320c38d7569e38a80416034481606038380138480416038a80d1205818034d43205d449378648f360cb03a04c916dd301604c916dd705ce5e024c36dcb03a048456dcb04c58034ceb72c0e81324578148506014d0848144e034f5a01923cd832cb0d302d4ba050f4138143e018ccf0c2e780"
+}

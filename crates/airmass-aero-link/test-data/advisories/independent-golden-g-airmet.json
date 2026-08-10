@@ -1,0 +1,26 @@
+{
+  "source_url": "https://github.com/rand-projects/fisb-decode/blob/c3d3b0473429336b1a98672b2e8b276c24d49765/tg/tg-source/generated/tg30.978#L59",
+  "source_kind": "independent standards-based golden vector",
+  "product_id": 14,
+  "issue_time": {
+    "month": 10,
+    "day": 30,
+    "hour": 2,
+    "minute": 45
+  },
+  "twgo_payload_hex": "8210000000ff0f64be2800000081efd3060a1e09000a1e0900d02f63e93ca0c954838d88a0c5a7633cfca0ca0c633e58a0cc8d234dd0a0d05b237530a0d02f63e93ca0",
+  "expected": {
+    "advisory_type": "g_airmet",
+    "valid_at_unix_millis": 1604048400000,
+    "altitude_feet": 16000,
+    "coordinates": [
+      [43.999557, -67.239761],
+      [39.969635, -76.879578],
+      [36.429977, -82.049332],
+      [36.489716, -75.869522],
+      [37.169495, -72.349777],
+      [38.899841, -66.999435],
+      [43.999557, -67.239761]
+    ]
+  }
+}

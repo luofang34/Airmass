@@ -53,16 +53,16 @@ fn at(value: u64) -> EvaluationTime {
 #[test]
 fn ingress_header_rejects_the_previous_version_before_payload_decode() {
     let text = r#"{
-        "schema_version": 2,
+        "schema_version": 3,
         "event": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherIngressHeader =
         serde_json::from_str(text).expect("header must ignore payload fields");
-    assert_eq!(header.schema_version(), 2);
+    assert_eq!(header.schema_version(), 3);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedIngressVersion {
-            found: 2,
+            found: 3,
             supported: CURRENT_WEATHER_INGRESS_SCHEMA_VERSION,
         })
     );
@@ -71,16 +71,16 @@ fn ingress_header_rejects_the_previous_version_before_payload_decode() {
 #[test]
 fn snapshot_header_rejects_the_previous_version_before_envelope_decode() {
     let text = r#"{
-        "schema_version": 2,
+        "schema_version": 3,
         "envelope": {"payload_that_this_reader_cannot_decode": true}
     }"#;
     let header: WeatherSnapshotRecordHeader =
         serde_json::from_str(text).expect("header must ignore envelope fields");
-    assert_eq!(header.schema_version(), 2);
+    assert_eq!(header.schema_version(), 3);
     assert_eq!(
         header.validate(),
         Err(WeatherSchemaError::UnsupportedSnapshotVersion {
-            found: 2,
+            found: 3,
             supported: CURRENT_WEATHER_SNAPSHOT_SCHEMA_VERSION,
         })
     );
