@@ -15,6 +15,7 @@ use airmass_core::{
 };
 
 const CAPTURED_UPLINK: &str = include_str!("../test-data/uat/uplink-captured-corrected.hex");
+const G_AIRMET_FIXTURE: &str = include_str!("../test-data/advisories/recorded-g-airmet.json");
 const CAPTURED_WINDS_TEXT: &str = concat!(
     "FT                       12000       18000   24000   30000    34000  39000                         \n",
     "                        3522+00 3631-13 0141-27 035046 046656 365258",
@@ -149,7 +150,7 @@ fn contributor_overflow_stays_visible() {
 #[test]
 fn every_weather_product_class_maps_to_ingress() {
     let mut adapter = AeroLinkAdapter::default();
-    for id in [11_u16, 12, 14, 15, 63, 64, 70, 71, 84, 90, 91, 103, 413] {
+    for id in [63_u16, 64, 70, 71, 84, 90, 91, 103, 413] {
         let batch = adapter
             .accept_message(
                 &message(id, &[id as u8]),
@@ -162,6 +163,21 @@ fn every_weather_product_class_maps_to_ingress() {
             format!("fisb-product-{id}")
         );
     }
+    let fixture: serde_json::Value =
+        serde_json::from_str(G_AIRMET_FIXTURE).expect("the advisory fixture must be valid");
+    let payload = decode_hex(
+        fixture["twgo_payload_hex"]
+            .as_str()
+            .expect("the advisory fixture must contain hex"),
+    );
+    let batch = adapter
+        .accept_message(&message(14, &payload), contributor(7, 1, 2_000_014))
+        .expect("the G-AIRMET product must map");
+    assert_eq!(batch.values().len(), 1);
+    assert_eq!(
+        batch.values()[0].product_id().as_str(),
+        "fisb-advisory-14-26-321"
+    );
 }
 
 #[test]

@@ -16,6 +16,8 @@ airmass-core = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+airmass-geojson = { path = "../airmass-geojson", features = ["geojson"] }
+serde = { workspace = true }
 serde_json = { workspace = true }
 
 [lints]

@@ -54,8 +54,15 @@ fn recorded_metars_become_points_with_their_flight_categories() {
         let FeatureDelta::Upsert(WeatherFeature::TextReport(feature)) = delta else {
             panic!("a recorded METAR must produce one point upsert");
         };
-        assert_eq!(feature.id().station_id().as_str(), record.station_id);
-        assert_eq!(feature.id().report_type(), WeatherReportType::Metar);
+        assert_eq!(
+            feature
+                .id()
+                .station_id()
+                .expect("a text feature must have a station")
+                .as_str(),
+            record.station_id
+        );
+        assert_eq!(feature.id().report_type(), Some(WeatherReportType::Metar));
         assert_eq!(feature.report().text().value, record.report_text);
         assert_eq!(
             feature
@@ -138,7 +145,14 @@ fn replacement_removes_disappeared_reports_and_upserts_the_new_set() {
     let FeatureDelta::Upsert(WeatherFeature::TextReport(feature)) = &deltas[1] else {
         panic!("the replacement report must upsert");
     };
-    assert_eq!(feature.id().station_id().as_str(), "MMMD");
+    assert_eq!(
+        feature
+            .id()
+            .station_id()
+            .expect("a text feature must have a station")
+            .as_str(),
+        "MMMD"
+    );
     assert_eq!(feature.revisions().snapshot_revision().get(), 2);
     assert_eq!(feature.revisions().product_revision().get(), 2);
 }

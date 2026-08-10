@@ -17,6 +17,8 @@ The product delivery sequence has one dependency chain:
    reports and the METAR flight category.
 3. [Airmass #7](https://github.com/luofang34/Airmass/issues/7) adds the
    renderer-neutral feature adapter.
+4. [Airmass #13](https://github.com/luofang34/Airmass/issues/13) adds typed
+   weather advisory shapes and their altitude bands.
 
 Other product work has no dependency on this chain. Assign additional project
 capacity to this chain first.
@@ -83,9 +85,10 @@ adapter preserves source identity, source epoch, delivery path, monotonic
 ingress time, source time, time quality, uncertainty, and raw product identity.
 It does not apply weather lifecycle rules.
 
-The adapter emits no weather ingress for an aeronautical-update record or a
-link-health record. Composition can send one classified record to more than
-one consumer.
+The adapter emits no weather ingress for a notice or a link-health record.
+TWGO uses one protocol category for more than one domain. The adapter admits
+weather advisory product identifiers from that category. Composition can send
+one classified record to more than one consumer.
 
 **Acceptance.**
 
@@ -121,6 +124,10 @@ value.
 - Text reports keep their report type, station identity, report time, and
   text.
 - Hazards keep their validity and typed geometry when geometry exists.
+- Advisory altitude bands keep their source base and top.
+- A forecast-point advisory keeps its point validity.
+- A single source altitude stays separate from an altitude band.
+- An advisory without a source band keeps an absent band field.
 - Gridded products use a typed grid with explicit coordinates and no-data
   values.
 - Each decoded field keeps its own time, quality, and provenance.

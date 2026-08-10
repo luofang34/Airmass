@@ -2,7 +2,8 @@
 
 use crate::{
     AbsenceEvidence, FieldState, StoreConfig, StoreError, TextWeatherReport, TimeEvidence,
-    TimedField, WeatherIngressEvent, WeatherProduct, WeatherProductId, WeatherValue,
+    TimedField, WeatherAdvisory, WeatherIngressEvent, WeatherProduct, WeatherProductId,
+    WeatherValue,
 };
 
 pub(super) fn validate_config(config: &StoreConfig) -> Result<(), StoreError> {
@@ -81,7 +82,7 @@ fn validate_product(
     now: crate::EvaluationTime,
 ) -> Result<(), StoreError> {
     validate_timed(product_id, "payload", product.payload(), expected, now)?;
-    validate_typed_value(product_id, product.typed_value(), expected, now)?;
+    validate_typed_value(product_id, product, expected, now)?;
     validate_field(
         product_id,
         "issue_time",
@@ -115,10 +116,11 @@ fn validate_product(
 
 fn validate_typed_value(
     product_id: &WeatherProductId,
-    value: &FieldState<WeatherValue>,
+    product: &WeatherProduct,
     expected: &crate::SourceRef,
     now: crate::EvaluationTime,
 ) -> Result<(), StoreError> {
+    let value = product.typed_value();
     validate_field(product_id, "typed_value", value, expected, now)?;
     let Some(field) = value.as_present() else {
         return Ok(());
@@ -129,8 +131,99 @@ fn validate_typed_value(
                 validate_text_report(product_id, report, expected, now)?;
             }
         }
+        WeatherValue::Advisories(advisories) => {
+            let [advisory] = advisories.as_slice() else {
+                return Err(StoreError::AdvisoryCount {
+                    product_id: product_id.clone(),
+                    actual: advisories.len(),
+                });
+            };
+            validate_advisory(product_id, advisory, expected, now)?;
+            validate_advisory_validity(product_id, product, advisory)?;
+        }
     }
     Ok(())
+}
+
+fn validate_advisory_validity(
+    product_id: &WeatherProductId,
+    product: &WeatherProduct,
+    advisory: &WeatherAdvisory,
+) -> Result<(), StoreError> {
+    let product_validity = product.valid_period().as_present().map(|field| field.value);
+    let advisory_validity = advisory.validity().as_present().map(|field| field.value);
+    let advisory_lifecycle = advisory_validity
+        .map(|validity| validity.lifecycle_interval())
+        .transpose()
+        .map_err(|source| StoreError::InvalidAdvisory {
+            product_id: product_id.clone(),
+            source,
+        })?;
+    if advisory_validity.is_some() && product_validity == advisory_lifecycle {
+        Ok(())
+    } else {
+        Err(StoreError::AdvisoryValidityMismatch {
+            product_id: product_id.clone(),
+            product_validity,
+            advisory_validity,
+        })
+    }
+}
+
+fn validate_advisory(
+    product_id: &WeatherProductId,
+    advisory: &WeatherAdvisory,
+    expected: &crate::SourceRef,
+    now: crate::EvaluationTime,
+) -> Result<(), StoreError> {
+    advisory
+        .validate_structure()
+        .map_err(|source| StoreError::InvalidAdvisory {
+            product_id: product_id.clone(),
+            source,
+        })?;
+    validate_field(
+        product_id,
+        "advisory.identity",
+        advisory.identity(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "advisory.type",
+        advisory.advisory_type(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "advisory.validity",
+        advisory.validity(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "advisory.altitude",
+        advisory.altitude(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "advisory.geometry",
+        advisory.geometry(),
+        expected,
+        now,
+    )?;
+    validate_field(
+        product_id,
+        "advisory.altitude_band",
+        advisory.altitude_band(),
+        expected,
+        now,
+    )
 }
 
 fn validate_text_report(

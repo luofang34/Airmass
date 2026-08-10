@@ -1,0 +1,31 @@
+{
+  "source_url": "https://aviationweather.gov/api/data/isigmet?format=json",
+  "product_id": 12,
+  "issue_time": {
+    "month": 8,
+    "day": 10,
+    "hour": 3,
+    "minute": 8
+  },
+  "twgo_payload_hex": "2110000000ff00c207d4d45d3681cb180604f4a0c70c33c3880604a3e04c91cd154803c3181604c244831c30cb5d6fc70c36c3080604f4ad80604a3e028f20138e15309548780f0c504e2438062528131568145520a01834d48172604f3d70e20170cf2cb582d813d30c79805c34c30de0b604f4e32e20170d72d7582d813d72d72805c36d32c60b604f5db3e20170db1d3182d813d75cf8805c34e71da0b604f4db4d20170cf6c7482d813d30d73805c33cb3c60b604f3db1e60170cf0cf5806332d30bf3e70f40",
+  "raw_text": "WSZA21 FAOR 100308\nFAJO SIGMET C01 VALID 100255/100600 FAOR-\nFAJO JOHANNESBURG OCEANIC FIR SEV TURB FCST WI\nS3508 E03225 - S4019 E04007 - S4828 E05255 - S5252 E06421 -\nS5638 E06141 - S5538 E04916 - S4644 E03614 - S4053 E03231 -\nS3619 E03035 FL240/390=",
+  "expected": {
+    "advisory_type": "sigmet",
+    "valid_start_unix_millis": 1786330500000,
+    "valid_end_unix_millis": 1786341600000,
+    "base_feet": 24000,
+    "top_feet": 39000,
+    "coordinates": [
+      [-35.133333, 32.416667],
+      [-40.316667, 40.116667],
+      [-48.466667, 52.916667],
+      [-52.866667, 64.35],
+      [-56.633333, 61.683333],
+      [-55.633333, 49.266667],
+      [-46.733333, 36.233333],
+      [-40.883333, 32.516667],
+      [-36.316667, 30.583333],
+      [-35.133333, 32.416667]
+    ]
+  }
+}

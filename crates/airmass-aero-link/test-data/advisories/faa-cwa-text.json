@@ -1,0 +1,13 @@
+{
+  "source_url": "https://www.faa.gov/air_traffic/publications/atpubs/fs_html/chap8_section_8.html",
+  "product_id": 15,
+  "report_year": 26,
+  "report_number": 101,
+  "issue_time": {
+    "month": 3,
+    "day": 3,
+    "hour": 21,
+    "minute": 41
+  },
+  "raw_text": "ZOB1 CWA 032141\nZOB CWA 101 VALID UNTIL 032300\nFROM 10S DET TO 40N DJB TO 40E SBN TO 80SE MKG\nLN SEV TSTMS WITH EXTRM PCPN MOVG FROM 2525 3/4 INCH HAIL RPRTD LAST 5 MINS 20 SW YIP.\nTSTMS WITH HVY TO EXTRM PCPN CONTG DTW AREA BYD 2300"
+}

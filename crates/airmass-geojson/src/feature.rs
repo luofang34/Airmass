@@ -4,14 +4,17 @@ use alloc::vec::Vec;
 
 use airmass_core::{
     ProducerInstanceId, ProductRevision, SelectionExplanation, SnapshotRevision,
-    SourceProductRevision, TextWeatherReport, WeatherProductId, WeatherProductSnapshot,
-    WeatherProductState, WeatherReportType, WeatherSnapshotEnvelope, WeatherStationId,
+    SourceProductRevision, TextWeatherReport, WeatherAdvisory, WeatherAdvisoryId, WeatherProductId,
+    WeatherReportType, WeatherStationId,
 };
 
 use crate::Wgs84Position;
 
+mod mapping;
 #[cfg(test)]
 mod tests;
+
+pub use mapping::map_snapshot_transition;
 
 /// Supplies a WGS84 position for one weather station.
 ///
@@ -36,9 +39,7 @@ where
 pub struct WeatherFeatureId {
     producer_instance_id: ProducerInstanceId,
     product_id: WeatherProductId,
-    report_type: WeatherReportType,
-    station_id: WeatherStationId,
-    occurrence: u32,
+    key: WeatherFeatureKey,
 }
 
 impl WeatherFeatureId {
@@ -54,23 +55,69 @@ impl WeatherFeatureId {
         &self.product_id
     }
 
-    /// Get the report type.
+    /// Get the domain feature key.
     #[must_use]
-    pub const fn report_type(&self) -> WeatherReportType {
-        self.report_type
+    pub const fn key(&self) -> &WeatherFeatureKey {
+        &self.key
     }
 
-    /// Get the station identity.
+    /// Get the report type for a text report feature.
     #[must_use]
-    pub const fn station_id(&self) -> &WeatherStationId {
-        &self.station_id
+    pub const fn report_type(&self) -> Option<WeatherReportType> {
+        match &self.key {
+            WeatherFeatureKey::TextReport { report_type, .. } => Some(*report_type),
+            WeatherFeatureKey::Advisory { .. } => None,
+        }
     }
 
-    /// Get the zero-based occurrence for this report type and station.
+    /// Get the station identity for a text report feature.
+    #[must_use]
+    pub const fn station_id(&self) -> Option<&WeatherStationId> {
+        match &self.key {
+            WeatherFeatureKey::TextReport { station_id, .. } => Some(station_id),
+            WeatherFeatureKey::Advisory { .. } => None,
+        }
+    }
+
+    /// Get the advisory identity for an advisory shape feature.
+    #[must_use]
+    pub const fn advisory_id(&self) -> Option<&WeatherAdvisoryId> {
+        match &self.key {
+            WeatherFeatureKey::Advisory { advisory_id, .. } => Some(advisory_id),
+            WeatherFeatureKey::TextReport { .. } => None,
+        }
+    }
+
+    /// Get the zero-based occurrence for this feature key.
     #[must_use]
     pub const fn occurrence(&self) -> u32 {
-        self.occurrence
+        match &self.key {
+            WeatherFeatureKey::TextReport { occurrence, .. }
+            | WeatherFeatureKey::Advisory { occurrence, .. } => *occurrence,
+        }
     }
+}
+
+/// Domain key for one weather feature.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum WeatherFeatureKey {
+    /// Key for a text report point.
+    TextReport {
+        /// Report type.
+        report_type: WeatherReportType,
+        /// Weather station identity.
+        station_id: WeatherStationId,
+        /// Zero-based occurrence for this type and station.
+        occurrence: u32,
+    },
+    /// Key for an advisory shape.
+    Advisory {
+        /// Source advisory identity.
+        advisory_id: WeatherAdvisoryId,
+        /// Zero-based occurrence for this advisory identity.
+        occurrence: u32,
+    },
 }
 
 /// Revisions that identify the source weather publication.
@@ -150,12 +197,123 @@ impl TextReportFeature {
     }
 }
 
+/// One closed ring in an advisory shape.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdvisoryShapeRing {
+    positions: Vec<Wgs84Position>,
+}
+
+impl AdvisoryShapeRing {
+    /// Get the closed positions in source order.
+    #[must_use]
+    pub fn positions(&self) -> &[Wgs84Position] {
+        &self.positions
+    }
+}
+
+/// One line in an advisory shape.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdvisoryShapeLine {
+    positions: Vec<Wgs84Position>,
+}
+
+impl AdvisoryShapeLine {
+    /// Get the positions in source order.
+    #[must_use]
+    pub fn positions(&self) -> &[Wgs84Position] {
+        &self.positions
+    }
+}
+
+/// Geometry for one renderer-neutral advisory shape.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum AdvisoryShapeGeometry {
+    /// Polygon rings.
+    Polygon(Vec<AdvisoryShapeRing>),
+    /// One polyline.
+    Polyline(AdvisoryShapeLine),
+}
+
+/// One renderer-neutral shape feature for a weather advisory.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdvisoryShapeFeature {
+    id: WeatherFeatureId,
+    geometry: AdvisoryShapeGeometry,
+    source_advisory_index: u32,
+    revisions: WeatherFeatureRevisions,
+    selection: SelectionExplanation,
+    advisory: WeatherAdvisory,
+}
+
+impl AdvisoryShapeFeature {
+    /// Get the stable feature identity.
+    #[must_use]
+    pub const fn id(&self) -> &WeatherFeatureId {
+        &self.id
+    }
+
+    /// Get the shape geometry.
+    #[must_use]
+    pub const fn geometry(&self) -> &AdvisoryShapeGeometry {
+        &self.geometry
+    }
+
+    /// Get polygon rings when this shape is a polygon.
+    #[must_use]
+    pub fn rings(&self) -> &[AdvisoryShapeRing] {
+        match &self.geometry {
+            AdvisoryShapeGeometry::Polygon(rings) => rings,
+            AdvisoryShapeGeometry::Polyline(_) => &[],
+        }
+    }
+
+    /// Get the line when this shape is a polyline.
+    #[must_use]
+    pub const fn line(&self) -> Option<&AdvisoryShapeLine> {
+        match &self.geometry {
+            AdvisoryShapeGeometry::Polyline(line) => Some(line),
+            AdvisoryShapeGeometry::Polygon(_) => None,
+        }
+    }
+
+    /// Get the zero-based advisory position in the source product.
+    #[must_use]
+    pub const fn source_advisory_index(&self) -> u32 {
+        self.source_advisory_index
+    }
+
+    /// Get the publication revisions.
+    #[must_use]
+    pub const fn revisions(&self) -> WeatherFeatureRevisions {
+        self.revisions
+    }
+
+    /// Get the source selection explanation.
+    #[must_use]
+    pub const fn selection(&self) -> &SelectionExplanation {
+        &self.selection
+    }
+
+    /// Get the complete typed advisory and its field evidence.
+    #[must_use]
+    pub const fn advisory(&self) -> &WeatherAdvisory {
+        &self.advisory
+    }
+}
+
 /// One renderer-neutral weather feature.
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "boxing would add an allocation to each typed feature"
+)]
 pub enum WeatherFeature {
     /// Point feature for a typed text report.
     TextReport(TextReportFeature),
+    /// Shape feature for a typed weather advisory.
+    AdvisoryShape(AdvisoryShapeFeature),
 }
 
 impl WeatherFeature {
@@ -164,6 +322,7 @@ impl WeatherFeature {
     pub const fn id(&self) -> &WeatherFeatureId {
         match self {
             Self::TextReport(feature) => feature.id(),
+            Self::AdvisoryShape(feature) => feature.id(),
         }
     }
 
@@ -172,6 +331,16 @@ impl WeatherFeature {
     pub const fn text_report(&self) -> Option<&TextReportFeature> {
         match self {
             Self::TextReport(feature) => Some(feature),
+            Self::AdvisoryShape(_) => None,
+        }
+    }
+
+    /// Get an advisory shape feature when this feature contains one.
+    #[must_use]
+    pub const fn advisory_shape(&self) -> Option<&AdvisoryShapeFeature> {
+        match self {
+            Self::AdvisoryShape(feature) => Some(feature),
+            Self::TextReport(_) => None,
         }
     }
 }
@@ -203,250 +372,4 @@ pub enum FeatureDelta {
         /// Lifecycle cause of the removal.
         reason: FeatureRemovalReason,
     },
-}
-
-/// Map a weather snapshot transition into renderer-neutral feature changes.
-///
-/// Pass `None` for the first snapshot. The resolver must give a stable answer
-/// while the caller maps one sequence of snapshots. A report with no type,
-/// station, or station position produces no feature and no error.
-#[must_use]
-pub fn map_snapshot_transition<R>(
-    previous: Option<&WeatherSnapshotEnvelope>,
-    current: &WeatherSnapshotEnvelope,
-    resolver: &R,
-) -> Vec<FeatureDelta>
-where
-    R: StationPositionResolver + ?Sized,
-{
-    let Some(previous) = previous else {
-        return map_initial_snapshot(current, resolver);
-    };
-    if previous.producer_instance_id() != current.producer_instance_id() {
-        return map_producer_replacement(previous, current, resolver);
-    }
-
-    let mut deltas = Vec::new();
-    for prior in previous.snapshot().products() {
-        let Some(next) = current.snapshot().product(prior.product_id()) else {
-            append_removals(
-                &mut deltas,
-                previous,
-                prior,
-                resolver,
-                FeatureRemovalReason::Replacement,
-            );
-            continue;
-        };
-        if prior.product_revision() != next.product_revision() {
-            append_product_transition(&mut deltas, previous, prior, current, next, resolver);
-        }
-    }
-    for next in current.snapshot().products() {
-        if previous.snapshot().product(next.product_id()).is_none() {
-            append_upserts(&mut deltas, current, next, resolver);
-        }
-    }
-    deltas
-}
-
-fn map_initial_snapshot<R>(current: &WeatherSnapshotEnvelope, resolver: &R) -> Vec<FeatureDelta>
-where
-    R: StationPositionResolver + ?Sized,
-{
-    let mut deltas = Vec::new();
-    for product in current.snapshot().products() {
-        append_upserts(&mut deltas, current, product, resolver);
-    }
-    deltas
-}
-
-fn map_producer_replacement<R>(
-    previous: &WeatherSnapshotEnvelope,
-    current: &WeatherSnapshotEnvelope,
-    resolver: &R,
-) -> Vec<FeatureDelta>
-where
-    R: StationPositionResolver + ?Sized,
-{
-    let mut deltas = Vec::new();
-    for product in previous.snapshot().products() {
-        append_removals(
-            &mut deltas,
-            previous,
-            product,
-            resolver,
-            FeatureRemovalReason::Replacement,
-        );
-    }
-    for product in current.snapshot().products() {
-        append_upserts(&mut deltas, current, product, resolver);
-    }
-    deltas
-}
-
-fn append_product_transition<R>(
-    deltas: &mut Vec<FeatureDelta>,
-    previous: &WeatherSnapshotEnvelope,
-    prior: &WeatherProductSnapshot,
-    current: &WeatherSnapshotEnvelope,
-    next: &WeatherProductSnapshot,
-    resolver: &R,
-) where
-    R: StationPositionResolver + ?Sized,
-{
-    let next_features = map_product_features(current, next, resolver);
-    let removal_reason = removal_reason(next.state());
-    for feature in map_product_features(previous, prior, resolver) {
-        if !next_features.iter().any(|next| next.id() == feature.id()) {
-            deltas.push(FeatureDelta::Remove {
-                id: feature.id().clone(),
-                reason: removal_reason,
-            });
-        }
-    }
-    deltas.extend(next_features.into_iter().map(FeatureDelta::Upsert));
-}
-
-fn append_removals<R>(
-    deltas: &mut Vec<FeatureDelta>,
-    envelope: &WeatherSnapshotEnvelope,
-    product: &WeatherProductSnapshot,
-    resolver: &R,
-    reason: FeatureRemovalReason,
-) where
-    R: StationPositionResolver + ?Sized,
-{
-    deltas.extend(
-        map_product_features(envelope, product, resolver)
-            .into_iter()
-            .map(|feature| FeatureDelta::Remove {
-                id: feature.id().clone(),
-                reason,
-            }),
-    );
-}
-
-fn append_upserts<R>(
-    deltas: &mut Vec<FeatureDelta>,
-    envelope: &WeatherSnapshotEnvelope,
-    product: &WeatherProductSnapshot,
-    resolver: &R,
-) where
-    R: StationPositionResolver + ?Sized,
-{
-    deltas.extend(
-        map_product_features(envelope, product, resolver)
-            .into_iter()
-            .map(FeatureDelta::Upsert),
-    );
-}
-
-fn map_product_features<R>(
-    envelope: &WeatherSnapshotEnvelope,
-    product: &WeatherProductSnapshot,
-    resolver: &R,
-) -> Vec<WeatherFeature>
-where
-    R: StationPositionResolver + ?Sized,
-{
-    let Some(reports) = text_reports(product) else {
-        return Vec::new();
-    };
-    reports
-        .iter()
-        .enumerate()
-        .filter_map(|(index, report)| {
-            map_report(envelope, product, reports, index, report, resolver)
-        })
-        .map(WeatherFeature::TextReport)
-        .collect()
-}
-
-fn text_reports(product: &WeatherProductSnapshot) -> Option<&[TextWeatherReport]> {
-    product
-        .state()
-        .available()?
-        .typed_value()
-        .as_present()?
-        .value
-        .text_reports()
-}
-
-fn map_report<R>(
-    envelope: &WeatherSnapshotEnvelope,
-    product: &WeatherProductSnapshot,
-    reports: &[TextWeatherReport],
-    index: usize,
-    report: &TextWeatherReport,
-    resolver: &R,
-) -> Option<TextReportFeature>
-where
-    R: StationPositionResolver + ?Sized,
-{
-    let id = report_id(envelope, product.product_id(), reports, index, report)?;
-    let position = resolver.station_position(id.station_id())?;
-    let source_report_index = u32::try_from(index).ok()?;
-    Some(TextReportFeature {
-        id,
-        position,
-        source_report_index,
-        revisions: WeatherFeatureRevisions {
-            snapshot_revision: envelope.snapshot_revision(),
-            product_revision: product.product_revision(),
-            source_product_revision: product.source_product_revision(),
-        },
-        selection: product.selection().clone(),
-        report: report.clone(),
-    })
-}
-
-fn report_id(
-    envelope: &WeatherSnapshotEnvelope,
-    product_id: &WeatherProductId,
-    reports: &[TextWeatherReport],
-    index: usize,
-    report: &TextWeatherReport,
-) -> Option<WeatherFeatureId> {
-    let report_type = report.report_type().as_present()?.value;
-    let station_id = &report.station_id().as_present()?.value;
-    let occurrence = reports
-        .get(..index)?
-        .iter()
-        .filter(|prior| same_report_key(prior, report_type, station_id))
-        .count();
-    Some(WeatherFeatureId {
-        producer_instance_id: envelope.producer_instance_id(),
-        product_id: product_id.clone(),
-        report_type,
-        station_id: station_id.clone(),
-        occurrence: u32::try_from(occurrence).ok()?,
-    })
-}
-
-fn same_report_key(
-    report: &TextWeatherReport,
-    report_type: WeatherReportType,
-    station_id: &WeatherStationId,
-) -> bool {
-    let Some(prior_type) = report.report_type().as_present() else {
-        return false;
-    };
-    let Some(prior_station) = report.station_id().as_present() else {
-        return false;
-    };
-    prior_type.value == report_type && prior_station.value == *station_id
-}
-
-fn removal_reason(state: &WeatherProductState) -> FeatureRemovalReason {
-    match state {
-        WeatherProductState::Absent { absence }
-            if absence.reason() == airmass_core::AbsenceReason::Expired =>
-        {
-            FeatureRemovalReason::Expired
-        }
-        WeatherProductState::Available { .. }
-        | WeatherProductState::Cancelled { .. }
-        | WeatherProductState::Absent { .. } => FeatureRemovalReason::Replacement,
-    }
 }

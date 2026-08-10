@@ -34,7 +34,7 @@ impl SourceEvidence {
         }
     }
 
-    fn timed<T>(&self, value: T) -> TimedField<T> {
+    pub(crate) fn timed<T>(&self, value: T) -> TimedField<T> {
         TimedField::new(
             value,
             self.time,
@@ -43,11 +43,11 @@ impl SourceEvidence {
         )
     }
 
-    fn present<T>(&self, value: T) -> FieldState<T> {
+    pub(crate) fn present<T>(&self, value: T) -> FieldState<T> {
         FieldState::present(self.timed(value))
     }
 
-    fn absent<T>(&self, reason: AbsenceReason) -> FieldState<T> {
+    pub(crate) fn absent<T>(&self, reason: AbsenceReason) -> FieldState<T> {
         FieldState::absent(AbsentField::new(
             reason,
             AbsenceEvidence::Source {

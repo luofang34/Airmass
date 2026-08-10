@@ -1,6 +1,6 @@
 {
   "corpus_version": 1,
-  "weather_ingress_schema_version": 3,
+  "weather_ingress_schema_version": 4,
   "evidence_profile": {
     "origin": "simulation",
     "delivery_path": "conformance-corpus",

@@ -1,0 +1,32 @@
+{
+  "source_url": "https://aviationweather.gov/api/data/gairmet?format=json",
+  "product_id": 14,
+  "issue_time": {
+    "month": 8,
+    "day": 10,
+    "hour": 2,
+    "minute": 45
+  },
+  "twgo_payload_hex": "8110000000ff19c1423400000083efd30d080a0300080a0900a756c3c8f000a79103bb8000a73d43a65800a7aa8395bc00a7d2838ad000a787e37ec000a754e3881400a75c239a4800a704c3a03400a6c6e3a65800a6d923ae5000a6ff63b64400a73083c13000a756c3c8f000",
+  "expected": {
+    "advisory_type": "g_airmet",
+    "valid_start_unix_millis": 1786330800000,
+    "valid_end_unix_millis": 1786352400000,
+    "coordinates": [
+      [42.58, -124.68],
+      [41.99, -124.36],
+      [41.06, -124.82],
+      [40.33, -124.22],
+      [39.85, -124.00],
+      [39.32, -124.41],
+      [39.73, -124.69],
+      [40.53, -124.65],
+      [40.79, -125.13],
+      [41.06, -125.47],
+      [41.41, -125.37],
+      [41.76, -125.16],
+      [42.24, -124.89],
+      [42.58, -124.68]
+    ]
+  }
+}
