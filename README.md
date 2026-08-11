@@ -54,7 +54,10 @@ its identity, type, validity, geometry, and source vertical data. Validity is a
 period or a forecast point. Vertical data is an altitude or an altitude band.
 The adapter does not add an altitude band when the source has no band. The
 `accept_message_at` and `accept_projection_at` use caller UTC to resolve
-missing date fields for legacy text advisories. Unsupported weather products keep
+missing date fields for legacy text advisories. The adapter emits no ingress
+for a Global Block product. A typed grid decoder is not available. The
+`ignored_global_block_products` counter reports each completed Global Block
+product that the adapter ignores. Other unsupported weather products keep
 their source payload and an explicit absent typed value.
 
 The [`airmass-geojson` adapter](docs/map-features.md) converts applicable

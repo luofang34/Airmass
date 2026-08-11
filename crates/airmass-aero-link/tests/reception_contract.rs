@@ -1,9 +1,12 @@
 //! Contract tests for FIS-B messages from `aero-link`.
 
-#![allow(clippy::panic)]
+#![allow(clippy::expect_used, clippy::panic)]
 
 use aero_link::{CorrectedUatFrame, ReceptionEvent, UatDecoder, UatFrameClass};
 use airmass_aero_link::AeroLinkAdapter;
+use airmass_core::{
+    EvaluationTime, MonotonicTime, ProducerInstanceId, StoreConfig, UtcTime, WeatherStore,
+};
 
 const UNKNOWN_PRODUCT_ID: u16 = 700;
 const UNKNOWN_PAYLOAD: [u8; 3] = [0xca, 0xfe, 0x01];
@@ -51,6 +54,33 @@ fn information_frame_projection_admits_only_weather() {
 
     assert_eq!(weather.len(), 1);
     assert_eq!(weather[0].product_id().as_str(), "fisb-product-413");
+    assert_eq!(adapter.ignored_global_block_products(), 0);
+}
+
+#[test]
+fn global_block_does_not_fail_its_mixed_reception() {
+    let event = global_block_uplink_event();
+    let mut adapter = AeroLinkAdapter::default();
+    let mut store = WeatherStore::new(StoreConfig::default(), ProducerInstanceId::new(14))
+        .expect("the default store configuration must be valid");
+    let evaluation =
+        EvaluationTime::new(UtcTime::from_unix_millis(0), MonotonicTime::from_micros(10));
+    let mut product_ids = Vec::new();
+
+    for projection in event.information_frames() {
+        let batch = adapter
+            .accept_projection(projection)
+            .expect("each product in the reception must adapt");
+        for ingress in batch.into_values() {
+            product_ids.push(ingress.product_id().as_str().to_owned());
+            store
+                .accept(ingress, evaluation)
+                .expect("each emitted weather product must enter the store");
+        }
+    }
+
+    assert_eq!(product_ids, ["fisb-product-413"]);
+    assert_eq!(adapter.ignored_global_block_products(), 1);
 }
 
 fn traffic_event() -> ReceptionEvent {
@@ -73,10 +103,28 @@ fn traffic_event() -> ReceptionEvent {
 }
 
 fn uplink_event() -> ReceptionEvent {
+    uplink_event_with_second_product([0x0a, 0xf0])
+}
+
+fn global_block_uplink_event() -> ReceptionEvent {
+    uplink_event_with_second_product([0x00, 0xfc])
+}
+
+fn uplink_event_with_second_product(product_header: [u8; 2]) -> ReceptionEvent {
     let mut bytes = vec![0; UatFrameClass::GroundUplink.corrected_bytes()];
     bytes[6] = 0x20;
     bytes[8..14].copy_from_slice(&[2, 0, 0x06, 0x74, 0x41, 0x90]);
-    bytes[14..23].copy_from_slice(&[3, 0x80, 0x0a, 0xf0, 0, 0, 0xca, 0xfe, 0x01]);
+    bytes[14..23].copy_from_slice(&[
+        3,
+        0x80,
+        product_header[0],
+        product_header[1],
+        0,
+        0,
+        0xca,
+        0xfe,
+        0x01,
+    ]);
     let frame = CorrectedUatFrame::try_from_boxed_bytes(
         UatFrameClass::GroundUplink,
         bytes.into_boxed_slice(),

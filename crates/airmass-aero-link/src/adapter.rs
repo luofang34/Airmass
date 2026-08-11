@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use aero_link::{
     FisBAssembler, FisBAssemblerConfig, FisBAssemblerConfigError, FisBAssemblerCounters,
-    FisBAssemblyError, FisBContributor, FisBContributorError, FisBMessage,
+    FisBAssemblyError, FisBContributor, FisBContributorError, FisBMessage, FisBProductFormat,
     UatInformationFrameProjection, exchange_records_from_complete_fis_b_product,
 };
 use airmass_core::UtcTime;
@@ -21,6 +21,7 @@ use crate::{
 pub struct AeroLinkAdapter {
     assembler: FisBAssembler,
     advisory_pairing: AdvisoryPairing,
+    ignored_global_block_products: u64,
 }
 
 impl AeroLinkAdapter {
@@ -34,6 +35,7 @@ impl AeroLinkAdapter {
         Ok(Self {
             assembler: FisBAssembler::new(config)?,
             advisory_pairing: AdvisoryPairing::default(),
+            ignored_global_block_products: 0,
         })
     }
 
@@ -113,6 +115,10 @@ impl AeroLinkAdapter {
         else {
             return Ok(WeatherIngressBatch::default());
         };
+        if product.product.format == FisBProductFormat::GlobalBlock {
+            self.ignored_global_block_products = self.ignored_global_block_products.wrapping_add(1);
+            return Ok(WeatherIngressBatch::default());
+        }
         let records =
             exchange_records_from_complete_fis_b_product(product).map_err(MappingError::from)?;
         Ok(map_records(
@@ -132,6 +138,12 @@ impl AeroLinkAdapter {
     #[must_use]
     pub const fn advisory_pairing_evictions(&self) -> u64 {
         self.advisory_pairing.evictions()
+    }
+
+    /// Get the number of completed Global Block products that produced no ingress.
+    #[must_use]
+    pub const fn ignored_global_block_products(&self) -> u64 {
+        self.ignored_global_block_products
     }
 }
 
