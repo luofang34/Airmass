@@ -35,8 +35,9 @@ const METAR_PAYLOAD: &[u8] = &[
 #[test]
 fn result_assembly_keeps_payload_and_each_contributor() {
     let mut adapter = AeroLinkAdapter::default();
-    let second = segmented_message(2, &[0x33, 0x44]);
-    let first = segmented_message(1, &[0x11, 0x22]);
+    let split = METAR_PAYLOAD.len() / 2;
+    let second = segmented_message(413, 2, &METAR_PAYLOAD[split..]);
+    let first = segmented_message(413, 1, &METAR_PAYLOAD[..split]);
 
     let pending = adapter
         .accept_message(&second, contributor(20, 1, 2_000_000))
@@ -52,14 +53,8 @@ fn result_assembly_keeps_payload_and_each_contributor() {
 
     let first_product = weather_product(&batch.values()[0]);
     let second_product = weather_product(&batch.values()[1]);
-    assert_eq!(
-        first_product.payload().value.bytes,
-        [0x11, 0x22, 0x33, 0x44]
-    );
-    assert_eq!(
-        second_product.payload().value.bytes,
-        [0x11, 0x22, 0x33, 0x44]
-    );
+    assert_eq!(first_product.payload().value.bytes, METAR_PAYLOAD);
+    assert_eq!(second_product.payload().value.bytes, METAR_PAYLOAD);
     assert_eq!(
         first_product.payload().provenance.source.epoch,
         SourceEpoch::new(1)
@@ -93,7 +88,7 @@ fn result_assembly_keeps_payload_and_each_contributor() {
     assert_eq!(raw_product.namespace, "aero-link/fis-b-exchange-v1");
     assert_eq!(
         raw_product.value,
-        "product=63;file=Some(21);segments=2;record=None/None;time=None-NoneT12:30:None"
+        "product=413;file=Some(21);segments=2;record=None/None;time=None-NoneT12:30:None"
     );
     assert_eq!(
         batch.values()[1].source_product_revision(),
@@ -120,7 +115,7 @@ fn mapped_source_time_quality_and_uncertainty_stay_exact() {
     source.source_time_quality = FisBSourceTimeQuality::MappedSourceTime;
     source.uncertainty_micros = Some(37);
     let batch = adapter
-        .accept_message(&message(63, &[1]), source)
+        .accept_message(&message(413, METAR_PAYLOAD), source)
         .expect("the mapped source time must be valid");
     let time = weather_product(&batch.values()[0]).payload().time;
     assert_eq!(time.ingress_basis, IngressTimeBasis::MappedSourceTime);
@@ -136,11 +131,18 @@ fn contributor_overflow_stays_visible() {
         ..FisBAssemblerConfig::default()
     };
     let mut adapter = AeroLinkAdapter::new(config).expect("one contributor must be valid");
+    let split = METAR_PAYLOAD.len() / 2;
     adapter
-        .accept_message(&segmented_message(2, &[2]), contributor(20, 1, 100))
+        .accept_message(
+            &segmented_message(413, 2, &METAR_PAYLOAD[split..]),
+            contributor(20, 1, 100),
+        )
         .expect("the first segment must be pending");
     let batch = adapter
-        .accept_message(&segmented_message(1, &[1]), contributor(7, 1, 101))
+        .accept_message(
+            &segmented_message(413, 1, &METAR_PAYLOAD[..split]),
+            contributor(7, 1, 101),
+        )
         .expect("the second segment must complete the product");
     assert_eq!(batch.values().len(), 1);
     assert!(batch.contributors_overflowed());
@@ -148,21 +150,13 @@ fn contributor_overflow_stays_visible() {
 }
 
 #[test]
-fn every_weather_product_class_maps_to_ingress() {
+fn decoded_weather_product_classes_map_to_ingress() {
     let mut adapter = AeroLinkAdapter::default();
-    for id in [63_u16, 64, 70, 71, 84, 90, 91, 103, 413] {
-        let batch = adapter
-            .accept_message(
-                &message(id, &[id as u8]),
-                contributor(7, 1, 1_000_000 + u64::from(id)),
-            )
-            .expect("a weather product must map");
-        assert_eq!(batch.values().len(), 1, "product {id}");
-        assert_eq!(
-            batch.values()[0].product_id().as_str(),
-            format!("fisb-product-{id}")
-        );
-    }
+    let batch = adapter
+        .accept_message(&message(413, METAR_PAYLOAD), contributor(7, 1, 1_000_413))
+        .expect("the text weather product must map");
+    assert_eq!(batch.values().len(), 1);
+    assert_eq!(batch.values()[0].product_id().as_str(), "fisb-product-413");
     let fixture: serde_json::Value =
         serde_json::from_str(G_AIRMET_FIXTURE).expect("the advisory fixture must be valid");
     let payload = decode_hex(
@@ -187,20 +181,7 @@ fn mixed_product_8_emits_no_weather_and_no_error() {
         .accept_message(&message(8, MIXED_PRODUCT_8), contributor(7, 2, 1_000_000))
         .expect("the mixed Product 8 fixture must decode");
     assert!(batch.values().is_empty());
-}
-
-#[test]
-fn global_block_has_no_typed_value_and_no_error() {
-    let mut adapter = AeroLinkAdapter::default();
-    let batch = adapter
-        .accept_message(&message(63, &[1, 2, 3]), contributor(7, 1, 100))
-        .expect("the Global Block product must map without an error");
-    let product = weather_product(&batch.values()[0]);
-    let FieldState::Absent(absence) = product.typed_value() else {
-        panic!("a Global Block product must not have a text value");
-    };
-    assert_eq!(absence.reason(), AbsenceReason::Unsupported);
-    assert!(matches!(absence.evidence(), AbsenceEvidence::Source { .. }));
+    assert_eq!(adapter.ignored_global_block_products(), 0);
 }
 
 #[test]
@@ -293,10 +274,10 @@ fn live_capture_maps_the_complete_winds_report_with_field_evidence() {
 fn source_restart_keeps_the_new_epoch() {
     let mut adapter = AeroLinkAdapter::default();
     let first = adapter
-        .accept_message(&message(63, &[1]), contributor(7, 1, 100))
+        .accept_message(&message(413, METAR_PAYLOAD), contributor(7, 1, 100))
         .expect("the first source epoch must map");
     let restarted = adapter
-        .accept_message(&message(63, &[2]), contributor(7, 2, 200))
+        .accept_message(&message(413, METAR_PAYLOAD), contributor(7, 2, 200))
         .expect("the restarted source epoch must map");
     assert_eq!(
         weather_product(&first.values()[0])
@@ -330,6 +311,7 @@ fn assembly_failure_is_not_an_empty_option() {
         .accept_message(&message(63, &[1]), contributor(7, 1, 100))
         .expect_err("the Result error must reach the adapter caller");
     assert!(matches!(error, AdapterError::Assembly(_)));
+    assert_eq!(adapter.ignored_global_block_products(), 0);
 }
 
 fn product_from_live_capture() -> WeatherProduct {
@@ -392,8 +374,8 @@ fn weather_product(ingress: &airmass_core::WeatherIngress) -> &airmass_core::Wea
     product
 }
 
-fn segmented_message(apdu_number: u16, payload: &[u8]) -> FisBMessage {
-    let mut message = message(63, payload);
+fn segmented_message(product_id: u16, apdu_number: u16, payload: &[u8]) -> FisBMessage {
+    let mut message = message(product_id, payload);
     message.flags.segmented = true;
     message.segmentation = Some(FisBSegmentation {
         product_file_id: 21,

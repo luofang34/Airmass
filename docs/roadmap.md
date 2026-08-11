@@ -90,13 +90,22 @@ TWGO uses one protocol category for more than one domain. The adapter admits
 weather advisory product identifiers from that category. Composition can send
 one classified record to more than one consumer.
 
+The adapter emits no weather ingress for a Global Block product. A typed grid
+decoder is not available. The adapter counts each completed Global Block
+product that it ignores.
+
 **Acceptance.**
 
 - The adapter depends on `aero-link` with default features disabled.
 - `ci/aero-link.ref` names the exact revision used by CI.
-- A fixture maps each admitted weather category to `WeatherIngress`.
+- A fixture maps each decoded weather product to `WeatherIngress`.
 - A mixed Product 8 fixture emits no weather ingress for a notice or a
   link-health record.
+- A Global Block product produces no weather ingress.
+- A reception with a Global Block product still emits its other weather
+  products.
+- A public counter reports each completed Global Block product that the adapter
+  ignores.
 - Provenance survives the mapping without a default value.
 - A source restart creates a new source epoch.
 - A traffic downlink produces no FIS-B weather message and no error.
