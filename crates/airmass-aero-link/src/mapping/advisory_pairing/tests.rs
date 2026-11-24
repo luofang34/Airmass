@@ -1,7 +1,5 @@
 //! Product 12 pairing-bound tests.
 
-#![allow(clippy::expect_used)]
-
 use alloc::{format, vec};
 
 use aero_link::{

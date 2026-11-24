@@ -1,6 +1,8 @@
 //! Executable tests for the source-neutral weather ingress corpus.
 
-#![allow(clippy::expect_used, clippy::panic)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use airmass_core::{
     AbsenceEvidence, AbsenceReason, AbsentField, AcceptStatus,

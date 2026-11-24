@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used)]
-
 use aero_link::FisBTime;
 use airmass_core::{UtcTime, WeatherAdvisoryType};
 

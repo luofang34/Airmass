@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used, clippy::panic)]
-
 use aero_link::TextReport;
 use airmass_core::{
     AbsenceEvidence, AbsenceReason, DeliveryPath, FieldState, FlightCategory, IngressTimeBasis,

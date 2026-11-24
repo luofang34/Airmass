@@ -1,6 +1,8 @@
 //! Contract tests for ignored FIS-B Global Block products.
 
-#![allow(clippy::expect_used)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use aero_link::{
     FisBContributor, FisBDeliveryPath, FisBFlags, FisBMessage, FisBOrigin, FisBProduct,

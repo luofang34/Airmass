@@ -1,6 +1,8 @@
 //! Public contract tests for the `aero-link` weather adapter.
 
-#![allow(clippy::expect_used, clippy::panic)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use aero_link::{
     CorrectedUatFrame, FisBAssemblerConfig, FisBContributor, FisBDeliveryPath, FisBFlags,
