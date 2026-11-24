@@ -42,15 +42,8 @@ jobs:
           ssh-key: ${{ secrets.AERO_LINK_DEPLOY_KEY }}
           persist-credentials: false
       - name: Install the Rust toolchain
-        run: |
-          rustup toolchain install 1.88 --profile minimal --component clippy,rustfmt
-          rustup target add --toolchain 1.88 \
-            thumbv6m-none-eabi \
-            thumbv8m.main-none-eabihf \
-            riscv32imac-unknown-none-elf \
-            wasm32-unknown-unknown
+        working-directory: Airmass
+        run: rustup toolchain install
       - name: Run CI
         working-directory: Airmass
-        env:
-          RUSTUP_TOOLCHAIN: "1.88"
         run: ./scripts/ci.sh

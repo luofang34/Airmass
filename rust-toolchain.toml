@@ -1,0 +1,12 @@
+# The channel is the `rust-version` of each package. A fixed channel keeps the
+# lint set and the supported-version check the same on each machine.
+[toolchain]
+channel = "1.88"
+profile = "minimal"
+components = ["clippy", "rustfmt"]
+targets = [
+    "thumbv6m-none-eabi",
+    "thumbv8m.main-none-eabihf",
+    "riscv32imac-unknown-none-elf",
+    "wasm32-unknown-unknown",
+]

@@ -2,3 +2,9 @@ disallowed-types = [
     { path = "anyhow::Error", reason = "Library crates use typed errors." },
 ]
 too-many-lines-threshold = 80
+allow-dbg-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-unwrap-in-tests = true

@@ -23,18 +23,29 @@ serde_json = "1.0"
 thiserror = { version = "2.0", default-features = false }
 
 [workspace.lints.rust]
+let_underscore_drop = "forbid"
 missing_docs = "deny"
 unsafe_code = "forbid"
+unused_must_use = "forbid"
 
 [workspace.lints.clippy]
 await_holding_lock = "deny"
-disallowed_types = "deny"
-expect_used = "deny"
+dbg_macro = "forbid"
+disallowed_types = "forbid"
+exit = "forbid"
+expect_used = "forbid"
+get_unwrap = "forbid"
 let_underscore_future = "deny"
 let_underscore_must_use = "deny"
-panic = "deny"
+mem_forget = "forbid"
+panic = "forbid"
+print_stderr = "forbid"
+print_stdout = "forbid"
+todo = "forbid"
 too_many_lines = "deny"
-unwrap_used = "deny"
+unimplemented = "forbid"
+unreachable = "forbid"
+unwrap_used = "forbid"
 
 [lib]
 name = "airmass"

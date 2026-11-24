@@ -1,6 +1,8 @@
 //! Contract tests for FIS-B messages from `aero-link`.
 
-#![allow(clippy::expect_used, clippy::panic)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use aero_link::{CorrectedUatFrame, ReceptionEvent, UatDecoder, UatFrameClass};
 use airmass_aero_link::AeroLinkAdapter;

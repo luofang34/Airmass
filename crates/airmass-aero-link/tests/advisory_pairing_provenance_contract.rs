@@ -1,6 +1,8 @@
 //! Multi-contributor Product 12 pairing contract tests.
 
-#![allow(clippy::expect_used, clippy::panic)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use aero_link::{
     FisBContributor, FisBDeliveryPath, FisBFlags, FisBMessage, FisBOrigin, FisBProduct,

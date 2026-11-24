@@ -1,5 +1,3 @@
-#![allow(clippy::expect_used, clippy::panic)]
-
 use alloc::{string::String, vec::Vec};
 
 use airmass_core::{

@@ -1,6 +1,8 @@
 //! Public tests for the versioned weather snapshot contract.
 
-#![allow(clippy::expect_used, clippy::panic)]
+// The test exemptions in `clippy.toml` apply only below `cfg(test)`, and the
+// helpers in this file are not `#[test]` functions.
+#![cfg(test)]
 
 use airmass_core::{
     AbsenceEvidence, AbsenceReason, AbsentField, CURRENT_WEATHER_INGRESS_SCHEMA_VERSION,
